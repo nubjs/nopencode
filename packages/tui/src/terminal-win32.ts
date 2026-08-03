@@ -1,4 +1,4 @@
-import { dlopen, ptr } from "bun:ffi"
+import { dlopen, ptr } from "./nub-ffi"
 import type { ReadStream } from "node:tty"
 
 const STD_INPUT_HANDLE = -10

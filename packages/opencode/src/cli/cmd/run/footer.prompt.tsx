@@ -5,7 +5,7 @@
 // It produces a PromptState that RunPromptBody renders as a slim single-line
 // composer while the footer view renders any active menus below it.
 /** @jsxImportSource @opentui/solid */
-import { pathToFileURL } from "bun"
+import { pathToFileURL } from "node:url"
 import { StyledText, fg, type ColorInput, type KeyEvent, type TextareaRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { normalizePromptContent } from "@opencode-ai/tui/editor"

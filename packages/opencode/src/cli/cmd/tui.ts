@@ -49,12 +49,12 @@ function createEventSource(client: RpcClient): EventSource {
   }
 }
 
-async function target() {
-  if (typeof OPENCODE_WORKER_PATH !== "undefined") return OPENCODE_WORKER_PATH
-  const dist = new URL("./cli/tui/worker.js", import.meta.url)
-  if (await Filesystem.exists(fileURLToPath(dist))) return dist
-  return new URL("../tui/worker.ts", import.meta.url)
-}
+// The worker entry is written inline at the `new Worker(...)` call below rather
+// than resolved here. `nub compile` follows a literal
+// `new Worker(new URL("./x.ts", import.meta.url))` and makes that file a second
+// bundled root with its own compiled preamble; a specifier that reaches the
+// constructor through a variable is invisible to the build and would ship the
+// entry untranspiled, as data.
 
 async function input(value?: string) {
   const piped = process.stdin.isTTY ? undefined : await Bun.stdin.text()
@@ -198,7 +198,6 @@ export const TuiThreadCommand = cmd({
       // Resolve relative --project paths from PWD, then use the real cwd after
       // chdir so the thread and worker share the same directory key.
       const next = resolveThreadDirectory(args.project)
-      const file = await target()
       try {
         process.chdir(next)
       } catch {
@@ -207,7 +206,7 @@ export const TuiThreadCommand = cmd({
       }
       const cwd = Filesystem.resolve(process.cwd())
 
-      const worker = new Worker(file, {
+      const worker = new Worker(new URL("../tui/worker.ts", import.meta.url), {
         env: Object.fromEntries(
           Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
         ),
