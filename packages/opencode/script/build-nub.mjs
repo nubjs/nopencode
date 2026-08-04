@@ -83,8 +83,6 @@ const args = [
   "--unbundled",
   "@opentui/core",
   "--unbundled",
-  `@opentui/core-${platform}`,
-  "--unbundled",
   "web-tree-sitter",
 
   // opencode's plugin system, provider loader and config loader all import a
