@@ -1,6 +1,10 @@
 import { cmd } from "@/cli/cmd/cmd"
 import { Rpc } from "@/util/rpc"
-import { type rpc } from "../tui/worker"
+// `import type` rather than `import { type rpc }`: the inline form leaves a
+// real import of the worker module, so its body — which installs the worker
+// RPC listener and assigns `onmessage` — is pulled into the main graph and
+// throws `onmessage is not defined` on the main thread.
+import type { rpc } from "../tui/worker"
 import path from "path"
 import { fileURLToPath } from "url"
 import { UI } from "@/cli/ui"

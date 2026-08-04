@@ -1,0 +1,39 @@
+diff --git a/chunk-node-q0cwyvm9.js b/chunk-node-q0cwyvm9.js
+index be7df0e11bc6eac9ac8aacacdf2a4686670f09e1..65700a5e6dd508ab91ce4ae91a703036466f291c 100644
+--- a/chunk-node-q0cwyvm9.js
++++ b/chunk-node-q0cwyvm9.js
+@@ -10957,7 +10957,22 @@ class TextBuffer {
+ 
+ // ../../node_modules/.bun/bun-ffi-structs@0.2.4+1fb4c65d43e298b9/node_modules/bun-ffi-structs/dist/index.js
+ var FFI_LOAD_ERROR = "bun-ffi-structs requires Bun or Node.js with node:ffi enabled (--experimental-ffi --allow-ffi).";
+-var backend2 = await loadBackend2();
++var __backendCache2, __backendLoaded2 = false;
++function backendOf2() {
++  if (!__backendLoaded2) { __backendLoaded2 = true; __backendCache2 = loadBackend2Sync(); }
++  return __backendCache2;
++}
++function loadBackend2Sync() {
++  if (typeof process !== "undefined" && "bun" in process.versions) {
++    return createBunBackend2(requireModule("bun:ffi"));
++  }
++  try {
++    const nodeFfi = requireModule("node:ffi");
++    return createNodeBackend2(nodeFfi.default ?? nodeFfi);
++  } catch (error) {
++    return createUnsupportedBackend2(error);
++  }
++}
+ function unavailable2(cause) {
+   throw new Error(FFI_LOAD_ERROR, {
+     cause: cause instanceof Error ? cause : undefined
+@@ -11016,8 +11031,8 @@ function toBigIntPointer2(pointer) {
+ function toBunPointer2(pointer) {
+   return typeof pointer === "bigint" ? Number(pointer) : pointer;
+ }
+-var ptr2 = backend2.ptr;
+-var toArrayBuffer2 = backend2.toArrayBuffer;
++var ptr2 = (...args) => backendOf2().ptr(...args);
++var toArrayBuffer2 = (...args) => backendOf2().toArrayBuffer(...args);
+ function fatalError(...args) {
+   const message = args.join(" ");
+   console.error("FATAL ERROR:", message);
