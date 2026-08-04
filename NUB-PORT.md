@@ -6,16 +6,44 @@ The branch carries only hand-written source. The Solid JSX transform is a **buil
 
 ## Status
 
-Builds and runs, TUI included. The binary is **47.5 MB**, against **106.5 MB** for the Bun build of the same tree. It carries its own Node — nothing to install on the machine that runs it.
+Builds and runs on **darwin-arm64** and **linux-x64**, TUI included, in both the default embed shape and `--smol`.
 
-Verified from a foreign working directory, with the runtime cache cleared, a fresh `HOME`, and separately with this source tree moved away entirely:
+Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`, and separately with this source tree moved away entirely:
 
 | | |
 | --- | --- |
-| `--version`, `--help`, `models`, `agent list`, `providers list`, four `--help` surfaces | **byte-identical output to the Bun build**, 9/9 |
-| TUI | renders, and responds to input — `esc` dismisses dialogs, typed text echoes into the prompt, `ctrl+p` opens the command palette |
-| Backend | `serve` listens, `/doc` and `/session` return 200, and a POSTed session persists and reads back stamped `"version":"0.0.0-nub"` — so SQLite opened and all 38 migrations ran |
-| A model response | **not verified here.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`), so it is the expired token, not the port. |
+| `--version`, `--help`, `models`, `agent list`, `providers list`, four `--help` surfaces | **byte-identical to the Bun build**, 9/9 |
+| TUI | renders on both platforms, and responds to input — `esc` dismisses dialogs, typed text echoes, `ctrl+p` opens the command palette |
+| Backend | `serve` listens, `/doc` and `/session` return 200, a POSTed session persists and reads back stamped `"version":"0.0.0-nub"` |
+| linux-x64 | cross-compiled from macOS, run in `debian:bookworm-slim` with **no Node on the machine** — needs `libatomic1`, see below |
+| `--smol` | 21.8 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after |
+| A model response | **not verified.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`). |
+
+### Measured against the Bun build
+
+darwin-arm64, hyperfine, 12 warm runs and 3 cold with the cache wiped between. Host was moderately loaded (~8 on 10 cores), so treat the absolutes as indicative and the ratios as the result.
+
+| | startup, warm | startup, cold | on disk | `gzip -9` |
+| --- | --- | --- | --- | --- |
+| Bun | **363 ms** | **392 ms** | 101.6 MB | **33.6 MB** |
+| nub, embed | 772 ms | 4.90 s | 45.3 MB | 44.4 MB |
+| nub, `--smol` | 822 ms | 3.20 s | **18.3 MB** | **17.4 MB** |
+
+**Bun is about 2.1x faster to start, and smaller to ship.** Its binary *is* the runtime; nub's launcher spawns Node as a child, paying two process starts plus Node's own init, and on a first run also pays extraction.
+
+The on-disk column is the misleading one and should never be quoted alone: nub's binary barely compresses because the embedded Node is already zstd-19, while Bun's compresses 3x because it is stored uncompressed. What you actually ship is the compressed size, and there Bun wins — 33.6 MB against 44.4 MB. `--smol` is the only shape that beats it, at 17.4 MB, because it carries no runtime at all.
+
+### Shipping to a slim container
+
+The embedded Node links a few system libraries. On `debian:bookworm-slim` the binary stops with a precise diagnostic:
+
+```
+nub: the embedded Node cannot start: it needs libatomic.so.1, which is not installed.
+  Debian or Ubuntu:  apt-get install libatomic1
+  Alpine:            apk add libatomic
+```
+
+`node:*-slim` images already carry it; bare `debian:*-slim` and `alpine` do not.
 
 ## Running it
 
@@ -52,7 +80,10 @@ mkdir -p dist-nub
 node script/nub-solid-transform.mjs ./src ../tui/src   # in place — see below
 node script/build-nub.mjs                              # stages assets, then compiles
 
-cd ../.. && git checkout -- . && cd packages/opencode   # undo the transform
+# undo the transform — only the transformed files, so any uncommitted
+# change to the build scripts survives
+git -C ../.. diff --name-only | grep -E '\.(tsx|jsx)$' | tr '\n' '\0' \
+  | (cd ../.. && xargs -0 git checkout --)
 ```
 
 The Solid transform rewrites `.tsx` in place, exactly as the Bun build's `onLoad` plugin rewrites it in memory. Its output is never committed — undo it after building, or build in a throwaway checkout.
@@ -70,6 +101,44 @@ The Solid transform rewrites `.tsx` in place, exactly as the Bun build's `onLoad
 The binary is self-contained — no Node, no `node_modules`, nothing to install. On first run it unpacks itself under `${XDG_CACHE_HOME:-$HOME/.cache}/nub/compile-app/<hash>`, which takes a second or two; later runs are immediate. That cache grows by one full extraction per rebuild and nothing evicts it, so `rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/nub/compile-app"` when it gets large.
 
 Installing dependencies with `nub install` instead of `bun install` needs two `patchedDependencies` entries in the root `package.json` corrected first — `@ff-labs/fff-bun@0.9.3` and `@standard-community/standard-openapi@0.2.9` are pinned to versions no longer resolved, which nub refuses and bun tolerates.
+
+### Cross-compiling
+
+`PLATFORM` moves the whole build — the target triple, the staged OpenTUI native library, and the libc defines. It needs the other platforms' packages present, which is what opencode's own build does before its 12-target matrix:
+
+```sh
+bun install --os="*" --cpu="*" @opentui/core@0.4.5
+bun install --os="*" --cpu="*" @parcel/watcher@2.5.1
+
+PLATFORM=linux-x64 OUT=$PWD/dist-nub/opencode-linux-x64 node script/build-nub.mjs
+SMOL=1 PLATFORM=linux-x64 OUT=$PWD/dist-nub/opencode-smol-linux node script/build-nub.mjs
+```
+
+`nub compile` needs a launcher for the target beside the `nub` binary. Cross-build one with the zig linker — 49 s for linux-x64 from an arm64 Mac:
+
+```sh
+rustup target add x86_64-unknown-linux-gnu
+( cd crates/nub-launcher && cargo zigbuild --release --target x86_64-unknown-linux-gnu )
+cp crates/nub-launcher/target/x86_64-unknown-linux-gnu/release/nub-launcher "$NUB_TARGET/nub-launcher-linux-x64"
+```
+
+## A suggestion for `nub compile`: a source-transform seam
+
+This is the one thing the port needed that `nub compile` cannot express, and it is not opencode-specific — any app whose source is a compile-to-runtime dialect (Solid, Svelte, Vue SFC) has the same shape.
+
+Bun's build takes `plugins: [createSolidTransformPlugin()]`: an `onLoad` hook that rewrites `.tsx` **in memory**. `nub compile` has no hook, so this port runs the identical Babel pass over the working tree **in place** and reverts it afterwards. It works and the output is byte-identical, but mutating a source tree as a build step is a bad seam — and it bit me, since `git checkout -- .` also discards any uncommitted edit to the build scripts themselves.
+
+A mirrored workspace is not a workaround. Measured, on this repo:
+
+- Symlinking each package's `node_modules` into a mirror **builds cleanly and produces a broken TUI** — the workspace links resolve back out to the untransformed originals. Silent wrong answer, the worst outcome.
+- Copying those `node_modules` instead keeps workspace links inside the mirror, but then `tsconfig` resolution fails (`@tsconfig/node22` not found).
+
+An isolated (bun/pnpm) layout is too entangled to relocate. Two options, cheapest first:
+
+1. **An overlay directory.** `--overlay <dir>`: during load, a file present at the same relative path under the overlay is read instead of the real one. The user runs whatever transform they like into the overlay; nothing mutates their tree. This is a load-hook redirect and needs no JS bridge.
+2. **A real transform hook.** `--transform <module>`, with nub hosting the user's module in the Node it already ships and calling it per module, mirroring esbuild/Rolldown `onLoad`. More faithful to Bun, considerably more machinery — an async IPC hop in the middle of the bundle.
+
+Option 1 solves the demonstrated problem; option 2 solves the general one.
 
 ## How each Bun build feature maps
 

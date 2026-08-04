@@ -58,6 +58,7 @@ const args = [
   "--target",
   process.env.NODE_TARGET ?? "26",
   ...(process.env.PLATFORM ? ["--platform", platform] : []),
+  ...(process.env.SMOL ? ["--smol"] : []),
 
   // node-gyp is only reached by a build-time codepath in a dependency.
   "--external",
