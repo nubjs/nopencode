@@ -6,26 +6,70 @@ The branch carries only hand-written source. The Solid JSX transform is a **buil
 
 ## Status
 
-Builds and runs, TUI included. The binary is **42.8 MB**, against **106.5 MB** for the Bun build of the same tree.
+Builds and runs, TUI included. The binary is **47.5 MB**, against **106.5 MB** for the Bun build of the same tree. It carries its own Node — nothing to install on the machine that runs it.
 
-Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`: `--version`, `--help`, `models`, `agent list` and `providers list` all produce **byte-identical output to the Bun build**, and the TUI renders — prompt, model line, keybinds, status bar.
+Verified from a foreign working directory, with the runtime cache cleared, a fresh `HOME`, and separately with this source tree moved away entirely:
+
+| | |
+| --- | --- |
+| `--version`, `--help`, `models`, `agent list`, `providers list`, four `--help` surfaces | **byte-identical output to the Bun build**, 9/9 |
+| TUI | renders, and responds to input — `esc` dismisses dialogs, typed text echoes into the prompt, `ctrl+p` opens the command palette |
+| Backend | `serve` listens, `/doc` and `/session` return 200, and a POSTed session persists and reads back stamped `"version":"0.0.0-nub"` — so SQLite opened and all 38 migrations ran |
+| A model response | **not verified here.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`), so it is the expired token, not the port. |
 
 ## Running it
 
+Two halves: a `nub` that has the compile verb, and this tree.
+
+### 1. A nub that can compile
+
+`nub compile` is behind an off-by-default cargo feature, and it needs a `nub-launcher` for the target sitting beside the binary — a released nub carries neither, and without the launcher the build stops with a 404 fetching it.
+
 ```sh
-# One-time: a modern node-gyp, if the host's is old.
-bun install
+git clone git@github.com:nubjs/nub.git && cd nub
+git checkout compile-spike
 
-# The Solid JSX transform. In place — `git checkout` to undo.
-node script/nub-solid-transform.mjs ./src ../tui/src
+scripts/rust-build.sh build -p nub-cli --profile fast --features compile
+( cd crates/nub-launcher && cargo build --release )
 
-# The build. NUB points at a nub built with `--features compile`.
-curl -sSL https://models.dev/api.json -o /tmp/oc-models.json
-mkdir -p dist-nub
-NUB=/path/to/nub node script/build-nub.mjs
+NUB_TARGET=$(scripts/rust-build.sh --print-target)/fast
+cp crates/nub-launcher/target/release/nub-launcher \
+   "$NUB_TARGET/nub-launcher-$(node -p '(process.platform==="win32"?"win32":process.platform)+"-"+process.arch')"
+export NUB="$NUB_TARGET/nub"
 ```
 
-`NO_MINIFY=1` and `OUT=<path>` are honoured.
+### 2. This tree
+
+```sh
+git clone git@github.com:nubjs/opencode.git && cd opencode
+git checkout nub-compile
+bun install                       # nub install also works; see the note below
+
+cd packages/opencode
+curl -sSL https://models.dev/api.json -o /tmp/oc-models.json
+mkdir -p dist-nub
+
+node script/nub-solid-transform.mjs ./src ../tui/src   # in place — see below
+node script/build-nub.mjs                              # stages assets, then compiles
+
+cd ../.. && git checkout -- . && cd packages/opencode   # undo the transform
+```
+
+The Solid transform rewrites `.tsx` in place, exactly as the Bun build's `onLoad` plugin rewrites it in memory. Its output is never committed — undo it after building, or build in a throwaway checkout.
+
+`OPENCODE_MODELS_JSON`, `OUT` and `NO_MINIFY=1` are honoured by `script/build-nub.mjs`.
+
+### 3. Run it
+
+```sh
+./dist-nub/opencode --version     # 0.0.0-nub
+./dist-nub/opencode               # the TUI
+./dist-nub/opencode run "…"       # non-interactive, needs a signed-in provider
+```
+
+The binary is self-contained — no Node, no `node_modules`, nothing to install. On first run it unpacks itself under `${XDG_CACHE_HOME:-$HOME/.cache}/nub/compile-app/<hash>`, which takes a second or two; later runs are immediate. That cache grows by one full extraction per rebuild and nothing evicts it, so `rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/nub/compile-app"` when it gets large.
+
+Installing dependencies with `nub install` instead of `bun install` needs two `patchedDependencies` entries in the root `package.json` corrected first — `@ff-labs/fff-bun@0.9.3` and `@standard-community/standard-openapi@0.2.9` are pinned to versions no longer resolved, which nub refuses and bun tolerates.
 
 ## How each Bun build feature maps
 
