@@ -6,7 +6,7 @@ The branch carries only hand-written source. The Solid JSX transform is a **buil
 
 ## Status
 
-Builds and runs on **darwin-arm64**, **linux-x64** and **win32-x64**, TUI included, in both the default embed shape and `--smol`.
+Builds and runs on **darwin-arm64**, **linux-x64**, **linux-arm64** and **win32-x64**, TUI included, in both the default embed shape and `--smol`.
 
 Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`, and separately with this source tree moved away entirely:
 
@@ -16,6 +16,7 @@ Verified from a foreign working directory, with the runtime cache cleared and a 
 | TUI | renders on both platforms, and responds to input — `esc` dismisses dialogs, typed text echoes, `ctrl+p` opens the command palette |
 | Backend | `serve` listens, `/doc` and `/session` return 200, a POSTed session persists and reads back stamped `"version":"0.0.0-nub"` |
 | linux-x64 | cross-compiled from macOS, run in `debian:bookworm-slim` with **no Node on the machine** — needs `libatomic1`, see below |
+| linux-arm64 | cross-compiled from macOS, run in `debian:bookworm-slim` at native speed under Docker on the arm64 host, again with no Node on the machine — needs `libatomic1` too |
 | win32-x64 | cross-compiled from macOS, run on native AMD64 Windows Server 2022 — every command matches, TUI renders. ~4 s warm startup there, see below |
 | `--smol` | 21.8 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after |
 | A model response | **not verified.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`). |
