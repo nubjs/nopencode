@@ -18,6 +18,16 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 
+declare const OPENCODE_LIBC: string | undefined
+
+// OpenTUI does not detect musl at run time — it reads `OPENTUI_LIBC` and
+// otherwise assumes glibc, so a musl binary asks for the glibc package's asset
+// key and fails against the `-musl` library staged beside it. The build knows
+// which libc it targeted, so tell OpenTUI rather than letting it guess wrong.
+if (!process.env.OPENTUI_LIBC && typeof OPENCODE_LIBC !== "undefined" && OPENCODE_LIBC === "musl") {
+  process.env.OPENTUI_LIBC = "musl"
+}
+
 if (!process.env.OTUI_ASSET_ROOT) {
   // Walked, not joined: `--include` keeps an embedded path's source-tree layout,
   // so including a sibling of `src/` re-roots the extraction one level up and the

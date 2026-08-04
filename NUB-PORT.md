@@ -6,7 +6,7 @@ The branch carries only hand-written source. The Solid JSX transform is a **buil
 
 ## Status
 
-Builds and runs on **darwin-arm64**, **linux-x64**, **linux-arm64** and **win32-x64**, TUI included, in both the default embed shape and `--smol`.
+Builds and runs on **darwin-arm64**, **linux-x64**, **linux-arm64**, **linux-arm64-musl** and **win32-x64**, TUI included, in both the default embed shape and `--smol`.
 
 Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`, and separately with this source tree moved away entirely:
 
@@ -17,6 +17,7 @@ Verified from a foreign working directory, with the runtime cache cleared and a 
 | Backend | `serve` listens, `/doc` and `/session` return 200, a POSTed session persists and reads back stamped `"version":"0.0.0-nub"` |
 | linux-x64 | cross-compiled from macOS, run in `debian:bookworm-slim` with **no Node on the machine** — needs `libatomic1`, see below |
 | linux-arm64 | cross-compiled from macOS, run in `debian:bookworm-slim` at native speed under Docker on the arm64 host, again with no Node on the machine — needs `libatomic1` too |
+| linux-arm64-musl | cross-compiled from macOS, run in `alpine:3.20` under Docker at native arm64 speed with no Node — needs `libgcc` rather than `libatomic1` |
 | win32-x64 | cross-compiled from macOS, run on native AMD64 Windows Server 2022 — every command matches, TUI renders. ~4 s warm startup there, see below |
 | `--smol` | 21.8 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after |
 | A model response | **not verified.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`). |
@@ -34,6 +35,14 @@ darwin-arm64, hyperfine, 12 warm runs and 3 cold with the cache wiped between. H
 **Bun is about 2.1x faster to start, and smaller to ship.** Its binary *is* the runtime; nub's launcher spawns Node as a child, paying two process starts plus Node's own init, and on a first run also pays extraction.
 
 The on-disk column is the misleading one and should never be quoted alone: nub's binary barely compresses because the embedded Node is already zstd-19, while Bun's compresses 3x because it is stored uncompressed. What you actually ship is the compressed size, and there Bun wins — 33.6 MB against 44.4 MB. `--smol` is the only shape that beats it, at 17.4 MB, because it carries no runtime at all.
+
+### musl needs `OPENTUI_LIBC` set explicitly
+
+Only musl surfaced this, and it failed hard rather than subtly: the TUI died with `Missing OpenTUI asset "@opentui/core-linux-arm64/libopentui.so"` — the **glibc** package's key — on a musl binary that had the musl library staged beside it.
+
+OpenTUI does no run-time musl detection. It reads `OPENTUI_LIBC` from the environment and otherwise assumes glibc, so a musl build asks for the wrong package name and cannot find the library it shipped with. `src/nub/otui-asset-root.ts` now sets it from `OPENCODE_LIBC`, which the build already defines from the target triple. The glibc builds are untouched — the assignment is guarded on `OPENCODE_LIBC === "musl"` — and were re-run afterwards to confirm it.
+
+musl also needs a different system library than glibc does: `libgcc` (`apk add libgcc`) rather than `libatomic1`. nub's diagnostic names the right one for the distro in both cases.
 
 ### Windows
 
