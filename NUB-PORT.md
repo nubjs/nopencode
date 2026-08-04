@@ -40,10 +40,29 @@ Cross-compiled from an arm64 Mac and verified on native AMD64 Windows Server 202
 
 Two caveats worth carrying:
 
-- **Startup is ~4 s warm** (4458/4003/3961 ms over three consecutive runs) against 772 ms on macOS. The extraction cache is present, so it is not re-extracting. Defender realtime monitoring was on, which would scan the 50 MB executable and the extracted Node on every spawn; that is the leading hypothesis but it has not been isolated from the VM's disk or from Windows process-creation cost.
+- **Startup is ~3 s warm** there against 772 ms on macOS. Root-caused below — it is neither Defender nor disk.
 - **The launcher was linked with `x86_64-pc-windows-gnu`**, because that is what `cargo-zigbuild` can produce from macOS. The release pipeline uses `x86_64-pc-windows-msvc`. It worked, but a gnu-linked launcher is a different CRT and should not be assumed equivalent for shipping.
 
 `packages/tui/src/nub-ffi.ts` is a throwing stub, so the Windows Ctrl-C console guard is absent — untested, and it would need `node:ffi` behind `--experimental-ffi` or a small addon.
+
+## Suggestion: the warm-start check is O(payload), and it dominates startup
+
+Worth raising because it is invisible on a small binary and severe on a large one. Measured on Windows, median of five runs each:
+
+| | median |
+| --- | --- |
+| system `node -e 0` | 55 ms |
+| the **extracted** `node -e 0` | 67 ms |
+| that node running the extracted app directly (`node --require <bootstrap> <entry> --version`) | 1277 ms |
+| the compiled executable | 3052 ms |
+
+So Node is fine — the extracted copy is 12 ms slower than the system one — the app's own module graph costs ~1210 ms, and **the launcher adds ~1775 ms on top before Node even starts**.
+
+The obvious culprits are ruled out. Defender exclusions on the executable and the cache changed nothing (2973 ms with, 3000 ms without). Reading the entire 98.6 MB extracted `node.exe` off that disk takes 78 ms. A full stat-walk of the 5164-file extracted app tree takes 363 ms.
+
+The cost is `app_cache_is_ready` in `crates/nub-launcher/src/main.rs`, which runs on every warm launch. It builds a map holding the **full decompressed bytes of every app file** (`app_bytes`, which zstd-decodes each one when the payload is compressed), then walks the extracted tree and byte-compares every file against that map. For this binary that is ~124 MB decompressed and ~124 MB read and compared, on every single invocation. The work scales with payload size rather than staying constant, which is why a 124 MB app pays ~1.8 s and a small one pays nothing noticeable. It is also part of why the warm numbers trail Bun's on macOS, where Bun does no equivalent check.
+
+The completion marker already proves a publication finished; the expensive part is proving the tree still matches afterwards. A digest written once at publish time and checked once at launch, or a manifest of `(path, size, mtime)`, would give the same tamper-evidence at O(files) instead of O(bytes). If full byte verification is deliberate, making it opt-in past some payload size would keep the guarantee where it is cheap and drop ~1.8 s where it is not.
 
 ### Shipping to a slim container
 
