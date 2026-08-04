@@ -6,7 +6,7 @@ The branch carries only hand-written source. The Solid JSX transform is a **buil
 
 ## Status
 
-Builds and runs on **darwin-arm64**, **linux-x64**, **linux-arm64**, **linux-arm64-musl** and **win32-x64**, TUI included, in both the default embed shape and `--smol`.
+Builds and runs on **darwin-arm64**, **darwin-x64**, **linux-x64**, **linux-arm64**, **linux-arm64-musl** and **win32-x64**, TUI included, in both the default embed shape and `--smol`.
 
 Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`, and separately with this source tree moved away entirely:
 
@@ -17,6 +17,7 @@ Verified from a foreign working directory, with the runtime cache cleared and a 
 | Backend | `serve` listens, `/doc` and `/session` return 200, a POSTed session persists and reads back stamped `"version":"0.0.0-nub"` |
 | linux-x64 | cross-compiled from macOS, run in `debian:bookworm-slim` with **no Node on the machine** — needs `libatomic1`, see below |
 | linux-arm64 | cross-compiled from macOS, run in `debian:bookworm-slim` at native speed under Docker on the arm64 host, again with no Node on the machine — needs `libatomic1` too |
+| darwin-x64 | cross-compiled from arm64 macOS, run under Rosetta — commands correct straight away, TUI correct once the binary used its own Node rather than the host's (see below) |
 | linux-arm64-musl | cross-compiled from macOS, run in `alpine:3.20` under Docker at native arm64 speed with no Node — needs `libgcc` rather than `libatomic1` |
 | win32-x64 | cross-compiled from macOS, run on native AMD64 Windows Server 2022 — every command matches, TUI renders. ~4 s warm startup there, see below |
 | `--smol` | 21.8 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after |
@@ -54,6 +55,16 @@ Two caveats worth carrying:
 - **The launcher was linked with `x86_64-pc-windows-gnu`**, because that is what `cargo-zigbuild` can produce from macOS. The release pipeline uses `x86_64-pc-windows-msvc`. It worked, but a gnu-linked launcher is a different CRT and should not be assumed equivalent for shipping.
 
 `packages/tui/src/nub-ffi.ts` is a throwing stub, so the Windows Ctrl-C console guard is absent — untested, and it would need `node:ffi` behind `--experimental-ffi` or a small addon.
+
+## Suggestion: an embed binary adopts a host Node of the wrong architecture
+
+Found by running the darwin-x64 build on an arm64 Mac under Rosetta, which is not an exotic setup — an x64 build is the fallback download, and Apple Silicon users run one whenever a native arm64 build is unavailable.
+
+The TUI died with `Missing OpenTUI asset "@opentui/core-darwin-arm64/libopentui.dylib"` — the **arm64** package — from an x86_64 binary that had staged the x64 one. The binary's own commands worked, so the mismatch only surfaced where a platform-specific file had to be found.
+
+The cause is that the embed shape prefers a Node already on the machine over extracting its own, and here the host Node was arm64 while the launcher process was x86_64. `process.arch` then reported `arm64`, so every path the app computes from it named a package the binary never shipped. Confirmed by control: with `env -i` and no Node on `PATH`, the same binary extracted its own Node — verified `Mach-O 64-bit executable x86_64` — and the TUI rendered correctly.
+
+Adopting a host Node is a good optimisation, and skipping a ~100 MB extraction is worth real effort. The suggestion is only that the adopted Node has to match the triple the binary was **built** for, not merely the machine it landed on. Otherwise `process.arch` and `process.platform` disagree with the build, and every asset, native addon and platform-conditional path an app derives from them points somewhere that does not exist. An app hitting this sees a missing-file error naming a package it never depended on, which is a hard failure to trace back to the launcher.
 
 ## Suggestion: the warm-start check is O(payload), and it dominates startup
 
