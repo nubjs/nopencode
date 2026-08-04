@@ -1,3 +1,7 @@
+// Installs the `Bun` global this build stands in for. Must be first.
+import "../../nub/bun-compat"
+// Points OpenTUI at the assets staged inside the binary. Must precede it.
+import "../../nub/otui-asset-root"
 import { Server } from "@/server/server"
 import { InstanceRuntime } from "@/project/instance-runtime"
 import { Rpc } from "@/util/rpc"

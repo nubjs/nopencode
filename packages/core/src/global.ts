@@ -1,5 +1,5 @@
 import path from "path"
-import fs from "fs/promises"
+import { mkdirSync } from "fs"
 import { xdgData, xdgCache, xdgConfig, xdgState } from "xdg-basedir"
 import os from "os"
 import { Context, Effect, Layer } from "effect"
@@ -32,15 +32,19 @@ export const Path = paths
 
 Flock.setGlobal({ state })
 
-await Promise.all([
-  fs.mkdir(Path.data, { recursive: true }),
-  fs.mkdir(Path.config, { recursive: true }),
-  fs.mkdir(Path.state, { recursive: true }),
-  fs.mkdir(Path.tmp, { recursive: true }),
-  fs.mkdir(Path.log, { recursive: true }),
-  fs.mkdir(Path.bin, { recursive: true }),
-  fs.mkdir(Path.repos, { recursive: true }),
-])
+// Synchronous, where upstream top-level `await`s a Promise.all. This module has
+// 52 importers, and a top-level await marks every one of them — and everything
+// they reach — as an async module. `nub compile` bundles those into Rolldown's
+// `await init_x()` initializers, which linearize what ESM evaluates as one
+// strongly connected component, so an import cycle among them (location →
+// project → directories → database → location) becomes a module awaiting its own
+// in-flight initializer and the program hangs before main with no error.
+//
+// Seven recursive mkdirs are no-ops after the first run, so doing them
+// synchronously costs nothing and is strictly more deterministic than the await.
+for (const dir of [Path.data, Path.config, Path.state, Path.tmp, Path.log, Path.bin, Path.repos]) {
+  mkdirSync(dir, { recursive: true })
+}
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Global") {}
 
