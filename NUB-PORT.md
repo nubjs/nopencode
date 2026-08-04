@@ -6,7 +6,7 @@ The branch carries only hand-written source. The Solid JSX transform is a **buil
 
 ## Status
 
-Builds and runs on **darwin-arm64** and **linux-x64**, TUI included, in both the default embed shape and `--smol`.
+Builds and runs on **darwin-arm64**, **linux-x64** and **win32-x64**, TUI included, in both the default embed shape and `--smol`.
 
 Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`, and separately with this source tree moved away entirely:
 
@@ -16,6 +16,7 @@ Verified from a foreign working directory, with the runtime cache cleared and a 
 | TUI | renders on both platforms, and responds to input — `esc` dismisses dialogs, typed text echoes, `ctrl+p` opens the command palette |
 | Backend | `serve` listens, `/doc` and `/session` return 200, a POSTed session persists and reads back stamped `"version":"0.0.0-nub"` |
 | linux-x64 | cross-compiled from macOS, run in `debian:bookworm-slim` with **no Node on the machine** — needs `libatomic1`, see below |
+| win32-x64 | cross-compiled from macOS, run on native AMD64 Windows Server 2022 — every command matches, TUI renders. ~4 s warm startup there, see below |
 | `--smol` | 21.8 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after |
 | A model response | **not verified.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`). |
 
@@ -32,6 +33,17 @@ darwin-arm64, hyperfine, 12 warm runs and 3 cold with the cache wiped between. H
 **Bun is about 2.1x faster to start, and smaller to ship.** Its binary *is* the runtime; nub's launcher spawns Node as a child, paying two process starts plus Node's own init, and on a first run also pays extraction.
 
 The on-disk column is the misleading one and should never be quoted alone: nub's binary barely compresses because the embedded Node is already zstd-19, while Bun's compresses 3x because it is stored uncompressed. What you actually ship is the compressed size, and there Bun wins — 33.6 MB against 44.4 MB. `--smol` is the only shape that beats it, at 17.4 MB, because it carries no runtime at all.
+
+### Windows
+
+Cross-compiled from an arm64 Mac and verified on native AMD64 Windows Server 2022: `--version`, `--help` (56 lines, identical to the other two platforms), `models`, `agent list`, `providers list` all correct, and the TUI renders. The cache lands at `%USERPROFILE%\.cache\nub`.
+
+Two caveats worth carrying:
+
+- **Startup is ~4 s warm** (4458/4003/3961 ms over three consecutive runs) against 772 ms on macOS. The extraction cache is present, so it is not re-extracting. Defender realtime monitoring was on, which would scan the 50 MB executable and the extracted Node on every spawn; that is the leading hypothesis but it has not been isolated from the VM's disk or from Windows process-creation cost.
+- **The launcher was linked with `x86_64-pc-windows-gnu`**, because that is what `cargo-zigbuild` can produce from macOS. The release pipeline uses `x86_64-pc-windows-msvc`. It worked, but a gnu-linked launcher is a different CRT and should not be assumed equivalent for shipping.
+
+`packages/tui/src/nub-ffi.ts` is a throwing stub, so the Windows Ctrl-C console guard is absent — untested, and it would need `node:ffi` behind `--experimental-ffi` or a small addon.
 
 ### Shipping to a slim container
 
