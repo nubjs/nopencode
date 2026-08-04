@@ -1,5 +1,5 @@
 // Installs the `Bun` global this build stands in for. Must be first.
-import "@/nub/bun-compat"
+import "../../nub/bun-compat"
 import { Server } from "@/server/server"
 import { InstanceRuntime } from "@/project/instance-runtime"
 import { Rpc } from "@/util/rpc"

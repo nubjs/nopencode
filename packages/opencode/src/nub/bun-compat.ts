@@ -70,11 +70,11 @@ const BunShim = {
   },
 }
 
-declare global {
-  // eslint-disable-next-line no-var
-  var Bun: typeof BunShim | undefined
-}
-
-globalThis.Bun ??= BunShim
+// Assigned through a cast rather than a `declare global`. Redeclaring the global
+// would replace @types/bun's ambient `Bun` with this partial shape for the whole
+// workspace, so every build script that legitimately uses the full Bun API under
+// Bun — Bun.build, Bun.env, Bun.spawn, Bun.Glob — would stop type-checking.
+const globals = globalThis as { Bun?: unknown }
+globals.Bun ??= BunShim
 
 export {}

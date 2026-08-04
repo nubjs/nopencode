@@ -12,11 +12,19 @@
  * `node:ffi` (Node 26 has it behind `--experimental-ffi`, so it also needs a way
  * to bake that flag into the compiled binary), or a small N-API addon calling
  * GetStdHandle/GetConsoleMode/SetConsoleMode directly.
+ *
+ * The signatures mirror `bun:ffi` rather than returning `never`, so callers keep
+ * type-checking against the shape they were written for.
  */
-export function dlopen(_library: string, _symbols: unknown): never {
-  throw new Error("FFI is unavailable in this build")
+const UNAVAILABLE = "FFI is unavailable in this build"
+
+export function dlopen<const T extends Record<string, unknown>>(
+  _library: string,
+  _symbols: T,
+): { symbols: Record<keyof T, (...args: any[]) => any>; close(): void } {
+  throw new Error(UNAVAILABLE)
 }
 
-export function ptr(_view: ArrayBufferView): never {
-  throw new Error("FFI is unavailable in this build")
+export function ptr(_view: ArrayBufferView | ArrayBuffer): number {
+  throw new Error(UNAVAILABLE)
 }

@@ -1,5 +1,5 @@
 // Installs the `Bun` global this build stands in for. Must be first.
-import "@/nub/bun-compat"
+import "./nub/bun-compat"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 import { RunCommand } from "./cli/cmd/run"
