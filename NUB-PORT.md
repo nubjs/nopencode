@@ -56,6 +56,14 @@ Two caveats worth carrying:
 
 `packages/tui/src/nub-ffi.ts` is a throwing stub, so the Windows Ctrl-C console guard is absent — untested, and it would need `node:ffi` behind `--experimental-ffi` or a small addon.
 
+## Suggestion: `--target 26` means a different Node in each shape
+
+The bare major resolves to **26.6.0** when the Node is embedded and **26.0.0** under `--smol`. Same flag, same command line, two runtimes six patch releases apart.
+
+That is enough to break an app silently. On 26.0.0 this TUI cannot bring up OpenTUI's native backend and dies with `OpenTUI native FFI is not available for this runtime yet`; on 26.6.0 it renders. Nothing in the build output suggests the two shapes differ — each prints the version it chose, but only side by side does the mismatch show. Pinning `--target 26.6.0` makes `--smol` work, which is what `script/build-nub.mjs` now does by default.
+
+A major-only target reasonably means "the newest 26 you can get". Whatever the rule is, both shapes should apply the same one, since the shape flag is about where the runtime comes from and not which runtime it is.
+
 ## Suggestion: an embed binary adopts a host Node of the wrong architecture
 
 Found by running the darwin-x64 build on an arm64 Mac under Rosetta, which is not an exotic setup — an x64 build is the fallback download, and Apple Silicon users run one whenever a native arm64 build is unavailable.
