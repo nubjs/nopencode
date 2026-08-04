@@ -6,7 +6,7 @@ The branch carries only hand-written source. The Solid JSX transform is a **buil
 
 ## Status
 
-Builds and runs on **darwin-arm64**, **darwin-x64**, **linux-x64**, **linux-arm64**, **linux-arm64-musl** and **win32-x64**, TUI included, in both the default embed shape and `--smol`.
+Builds and runs on **darwin-arm64**, **darwin-x64**, **linux-x64**, **linux-arm64**, **linux-arm64-musl** and **win32-x64**, with the TUI rendering on every one. That is the embed shape; `--smol` is verified with its TUI on darwin-x64 and linux-arm64, and the other four are untried in that shape rather than known good.
 
 Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`, and separately with this source tree moved away entirely:
 
@@ -20,7 +20,7 @@ Verified from a foreign working directory, with the runtime cache cleared and a 
 | darwin-x64 | cross-compiled from arm64 macOS, run under Rosetta — commands correct straight away, TUI correct once the binary used its own Node rather than the host's (see below) |
 | linux-arm64-musl | cross-compiled from macOS, run in `alpine:3.20` under Docker at native arm64 speed with no Node — needs `libgcc` rather than `libatomic1` |
 | win32-x64 | cross-compiled from macOS, run on native AMD64 Windows Server 2022 — every command matches, TUI renders. ~4 s warm startup there, see below |
-| `--smol` | 21.8 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after |
+| `--smol` | 21.6 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after. Needs `curl` or `wget` on the box — a slim image has neither, and nub says so rather than failing obscurely |
 | A model response | **not verified.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`). |
 
 ### Measured against the Bun build
