@@ -1,5 +1,8 @@
+diff --git a/node_modules/@opentui/core/.bun-tag-c185800edb5d4855 b/.bun-tag-c185800edb5d4855
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/chunk-node-q0cwyvm9.js b/chunk-node-q0cwyvm9.js
-index be7df0e11bc6eac9ac8aacacdf2a4686670f09e1..65700a5e6dd508ab91ce4ae91a703036466f291c 100644
+index be7df0e11bc6eac9ac8aacacdf2a4686670f09e1..687d54c6c1bcfe99008fcb275b07ebae87f45c0b 100644
 --- a/chunk-node-q0cwyvm9.js
 +++ b/chunk-node-q0cwyvm9.js
 @@ -10957,7 +10957,22 @@ class TextBuffer {
@@ -37,3 +40,57 @@ index be7df0e11bc6eac9ac8aacacdf2a4686670f09e1..65700a5e6dd508ab91ce4ae91a703036
  function fatalError(...args) {
    const message = args.join(" ");
    console.error("FATAL ERROR:", message);
+@@ -11993,16 +12008,37 @@ registerEnvVar({
+ });
+ var targetLibPath;
+ var targetLibError;
+-try {
+-  targetLibPath = await resolveNativeLibraryPath();
+-  if (isBunfsPath(targetLibPath)) {
+-    targetLibPath = targetLibPath.replace("../", "");
++var targetLibResolved = false;
++// Resolved lazily and synchronously, where upstream top-level `await`s it. A
++// top-level await marks this module async, and with it every importer — which is
++// the whole of @opentui/solid and any TUI built on it. A bundler turns those into
++// linearized `await init_x()` initializers, so the first import cycle among them
++// becomes a module awaiting its own in-flight initializer and the program hangs
++// before main with no error. `requireModule` is the same createRequire this file
++// already uses for its FFI backend.
++function resolveNativeLibraryPathSync() {
++  const asset = getNativeAssetDescriptor(getCurrentNodeAssetTarget());
++  const configuredPath = resolveAssetRootPath(asset.key);
++  if (configuredPath !== undefined) {
++    return configuredPath;
+   }
+-  if (!existsSync3(targetLibPath)) {
+-    throw new Error(`OpenTUI native library does not exist at ${JSON.stringify(targetLibPath)}`);
++  const mod = requireModule(asset.packageName);
++  return mod?.default ?? mod;
++}
++function ensureTargetLib() {
++  if (targetLibResolved) return;
++  targetLibResolved = true;
++  try {
++    targetLibPath = resolveNativeLibraryPathSync();
++    if (isBunfsPath(targetLibPath)) {
++      targetLibPath = targetLibPath.replace("../", "");
++    }
++    if (!existsSync3(targetLibPath)) {
++      throw new Error(`OpenTUI native library does not exist at ${JSON.stringify(targetLibPath)}`);
++    }
++  } catch (error) {
++    targetLibError = error instanceof Error ? error : new Error(String(error));
+   }
+-} catch (error) {
+-  targetLibError = error instanceof Error ? error : new Error(String(error));
+ }
+ registerEnvVar({
+   name: "OTUI_DEBUG_FFI",
+@@ -12078,6 +12114,7 @@ function optionalRgbaPtr(value) {
+   return value ? rgbaPtr(value) : null;
+ }
+ function getOpenTUILib(libPath) {
++  ensureTargetLib();
+   const resolvedLibPath = libPath || targetLibPath;
+   if (!resolvedLibPath) {
+     throw targetLibError ?? new Error(`OpenTUI is not supported on the current platform: ${process.platform}-${process.arch}`);

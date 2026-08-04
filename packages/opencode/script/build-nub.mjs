@@ -19,6 +19,7 @@
  * does not re-walk the tree.
  */
 import { spawnSync } from "node:child_process"
+import { stage as stageOtuiAssets } from "./stage-otui-assets.mjs"
 import { existsSync, readdirSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -71,6 +72,11 @@ const args = [
   "--alias",
   `opencode-web-ui.gen.ts=${path.join(dir, "src/nub/web-ui-empty.ts")}`,
 
+  // @opentui/solid's runtime plugin host is Bun-only and its node arm throws at
+  // module scope, so the import itself is fatal. See the stub for what is lost.
+  "--alias",
+  `@opentui/solid/runtime-plugin-support/configure=${path.join(dir, "src/nub/runtime-plugin-support-noop.ts")}`,
+
   // opentui locates its native library, tree-sitter grammars and parser worker
   // through paths it computes at run time, so it has to keep its installed
   // layout rather than be flattened into the bundle.
@@ -86,6 +92,10 @@ const args = [
   // genuinely needs them.
   ...(process.env.NO_MINIFY ? ["--no-minify"] : []),
   ...(process.env.EXTRA_UNBUNDLED ? process.env.EXTRA_UNBUNDLED.split(",").flatMap((p) => ["--unbundled", p]) : []),
+  // The staged OpenTUI asset root (see script/stage-otui-assets.mjs).
+  "--include",
+  "otui-assets",
+
   "--allow-dynamic-import",
 
   "--define",
@@ -99,6 +109,9 @@ const args = [
   "--define-file",
   `OPENCODE_MODELS_DEV=${MODELS}`,
 ]
+
+const staged = await stageOtuiAssets(path.join(dir, "otui-assets"))
+console.log(`Staged ${staged.count} OpenTUI assets`)
 
 if (!existsSync(MODELS)) throw new Error(`missing models snapshot: ${MODELS} (curl https://models.dev/api.json)`)
 

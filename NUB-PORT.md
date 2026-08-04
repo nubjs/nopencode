@@ -6,20 +6,9 @@ The branch carries only hand-written source. The Solid JSX transform is a **buil
 
 ## Status
 
-Builds and runs. The binary is **42.8 MB**, against **106.5 MB** for the Bun build of the same tree.
+Builds and runs, TUI included. The binary is **42.8 MB**, against **106.5 MB** for the Bun build of the same tree.
 
-Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`:
-
-| | |
-| --- | --- |
-| `--version` | `0.0.0-nub` |
-| `--help` | full logo and command list, 56 lines |
-| `models` | 104 models |
-| `agent list` | full agent config, matches the Bun build |
-| `providers` | same usage output and exit 1 as the Bun build |
-| **TUI** (`opencode` with no args) | **does not start** — see below |
-
-The TUI still exits 13 on an unsettled top-level await. Everything else works.
+Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`: `--version`, `--help`, `models`, `agent list` and `providers list` all produce **byte-identical output to the Bun build**, and the TUI renders — prompt, model line, keybinds, status bar.
 
 ## Running it
 
@@ -67,7 +56,10 @@ NUB=/path/to/nub node script/build-nub.mjs
 | `packages/opencode/package.json` | `string-width` (what `Bun.stringWidth` becomes); `babel-preset-solid` + `@babel/preset-typescript` for the transform |
 | `packages/core/src/database/migration.gen.ts` | 38 dynamic imports behind a top-level `await Promise.all` become static imports |
 | `packages/core/src/global.ts` | `await`ed `mkdir`s become `mkdirSync` |
-| `patches/@opentui%2Fcore@0.4.5.patch` | opentui's FFI backend loads lazily and synchronously instead of at top level |
+| `patches/@opentui%2Fcore@0.4.5.patch` | opentui's FFI backend and native-library path both resolve lazily and synchronously instead of at top level |
+| `packages/opencode/script/stage-otui-assets.mjs` | new — stages the 13 files OpenTUI locates at run time into one `OTUI_ASSET_ROOT`-keyed directory |
+| `packages/opencode/src/nub/otui-asset-root.ts` | new — points `OTUI_ASSET_ROOT` at that directory inside the binary, before OpenTUI loads |
+| `packages/opencode/src/nub/runtime-plugin-support-noop.ts` | new — stands in for the Bun-only TUI plugin host, whose Node arm throws on import |
 
 Everything else opencode already had: `@opentui/core`, `@opentui/solid`, `#sqlite`, `#pty` and `#fff` all ship working `node` conditions, so choosing the `node` condition is the whole fix for them.
 
@@ -77,15 +69,29 @@ Every hard failure in this port came from the same place, and it is worth unders
 
 A bundler cannot keep ESM's evaluation semantics for an async module graph. Rolldown (and esbuild, which ships a byte-identical helper) turns each module into a lazy initializer and emits `await init_dependency()` at the head of each one. Real ESM evaluates a cycle as a single strongly connected component and never has a module wait on itself; the linearized form does exactly that. So **one top-level `await` anywhere marks every importer async, and the first import cycle among them hangs the program before `main` with no error at all** — just exit 13 and silence.
 
-Three fixes here are that, and nothing else:
+Four fixes here are that, and nothing else:
 
-- `packages/core/src/database/migration.gen.ts` — upstream `await`s a `Promise.all` of 38 dynamic imports. Static imports are equivalent and drop the await. Also worth it on its own: 38 fewer lazily-loaded chunks.
-- `packages/core/src/global.ts` — `await`ed seven `mkdir`s. `mkdirSync` is equivalent, and this module has 52 importers.
-- `patches/@opentui%2Fcore@0.4.5.patch` — `var backend2 = await loadBackend2()`. Made lazy and synchronous through `createRequire`, which is what the same file's *other* FFI backend loader already does.
+| Where | What |
+| --- | --- |
+| `packages/core/src/database/migration.gen.ts` | 38 dynamic imports behind `await Promise.all` become static imports. Also drops 38 lazily-loaded chunks. |
+| `packages/core/src/global.ts` | seven awaited `mkdir`s become `mkdirSync`. 52 modules import this one. |
+| `patches/@opentui%2Fcore@0.4.5.patch` | two awaits: the FFI backend, and `targetLibPath = await resolveNativeLibraryPath()`. Both now resolve lazily and synchronously. The second one is what made the entire TUI subgraph async. |
 
-The TUI is still blocked on this. After those three, no source-level top-level await remains, but the whole `packages/tui` subgraph still comes out as async initializers and deadlocks on a cycle among them.
+## OpenTUI's runtime-resolved assets
+
+OpenTUI finds its native library with `await import("@opentui/core-<platform>-<arch>")` — a specifier built from `process.platform`/`process.arch`, invisible to any bundler, and it locates the tree-sitter parser worker and grammar files the same way. `OTUI_ASSET_ROOT` is the package's own escape hatch: an absolute directory it consults first, keyed `<package>/<file>`.
+
+`script/stage-otui-assets.mjs` builds that directory, `--include` embeds it, and `src/nub/otui-asset-root.ts` points the env var at it before anything touches OpenTUI. It is **all or nothing** — with the root set, a missing asset throws rather than falling back — so the staging script verifies all 13 assets are present rather than letting it fail inside a rendered frame.
+
+Two things this replaced: a `require()` of the platform package fails, because its `exports` map declares only `import` and `types`; and `--unbundled @opentui/core-<platform>-<arch>` silently shipped nothing, because the package lives in Bun's isolated store and is not resolvable from the entry's directory.
+
+## The Bun-only plugin host
+
+`@opentui/solid/runtime-plugin-support/configure` registers a `bun.plugin` hook so a TUI plugin loaded at run time resolves `@opentui/solid` and `solid-js` to the host's module instances. Its Node arm throws at module scope, so even importing it is fatal. The nub build aliases it to `src/nub/runtime-plugin-support-noop.ts`; opencode's source is untouched and the Bun build keeps the real thing.
+
+Consequence: the TUI runs, and third-party TUI plugins that import the Solid/OpenTUI runtime do not get the host's instances. Every built-in plugin is bundled and unaffected.
 
 ## Two things that need a flag `nub compile` does not have
 
-- **`--experimental-ffi`.** `@opentui/core`'s Node backend is `require("node:ffi")`, which Node 26 gates behind that flag; the package's own error text says so. The TUI cannot start without it. Bun bakes flags in with `compile.execArgv`; `nub compile` has no equivalent, so today the only lever is `NODE_OPTIONS=--experimental-ffi` in the environment.
+- **`--experimental-ffi`.** `@opentui/core` has a `node:ffi` backend that Node 26 gates behind this flag. The TUI renders *without* it — that path degrades to `createUnsupportedBackend` and the render library loads through the staged asset root instead — so it is not required today. It would be needed by anything that reaches the FFI struct helpers. Bun bakes flags in with `compile.execArgv`; `nub compile` has no equivalent, so the only lever is `NODE_OPTIONS` in the environment.
 - **`--use-system-ca`.** Baked in by the Bun build. Node has the same flag since v23.8, and the same problem baking it in.

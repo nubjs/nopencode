@@ -1,5 +1,7 @@
 // Installs the `Bun` global this build stands in for. Must be first.
 import "./nub/bun-compat"
+// Points OpenTUI at the assets staged inside the binary. Must precede it.
+import "./nub/otui-asset-root"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 import { RunCommand } from "./cli/cmd/run"
