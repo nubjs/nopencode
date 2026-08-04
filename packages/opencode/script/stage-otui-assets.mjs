@@ -53,10 +53,23 @@ function packageDir(name) {
 
 const NATIVE_FILE = { darwin: "libopentui.dylib", linux: "libopentui.so", win32: "opentui.dll" }
 
-export async function stage(target = path.join(dir, "otui-assets")) {
-  const platform = process.platform
-  const arch = process.arch
-  const nativePkg = `@opentui/core-${platform}-${arch}`
+/** Parse `darwin-arm64` / `linux-x64-musl` / `win32-x64` into an OpenTUI target. */
+export function parseTarget(triple) {
+  const m = /^(darwin|linux|win32)-(arm64|x64)(?:-(musl))?$/.exec(triple)
+  if (!m) throw new Error(`unsupported --platform: ${triple}`)
+  const [, platform, arch, libc] = m
+  if (libc && platform !== "linux") throw new Error(`musl is linux-only, got ${triple}`)
+  return { platform, arch, libc }
+}
+
+export async function stage(target = path.join(dir, "otui-assets"), triple) {
+  // The TARGET's native library, not the build host's. Staging by
+  // process.platform would put a .dylib in a linux binary and the TUI would fail
+  // on the machine it shipped to, with the build reporting success.
+  const { platform, arch, libc } = triple
+    ? parseTarget(triple)
+    : { platform: process.platform, arch: process.arch, libc: undefined }
+  const nativePkg = `@opentui/core-${platform}-${arch}${libc === "musl" ? "-musl" : ""}`
   const nativeFile = NATIVE_FILE[platform]
   if (!nativeFile) throw new Error(`unsupported platform ${platform}`)
 
@@ -86,10 +99,10 @@ export async function stage(target = path.join(dir, "otui-assets")) {
     ]),
   ]
   for (const key of required) await access(path.join(target, key))
-  return { target, count: required.length }
+  return { target, count: required.length, pkg: nativePkg }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { target, count } = await stage()
-  console.log(`Staged ${count} OpenTUI assets into ${target}`)
+  const { target, count, pkg } = await stage(undefined, process.argv[2])
+  console.log(`Staged ${count} OpenTUI assets for ${pkg} into ${target}`)
 }

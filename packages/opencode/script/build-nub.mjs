@@ -33,7 +33,12 @@ const MODELS = process.env.OPENCODE_MODELS_JSON ?? "/tmp/oc-models.json"
 const OUT = process.env.OUT ?? path.join(dir, "dist-nub/opencode")
 
 const version = process.env.OPENCODE_VERSION ?? "0.0.0-nub"
-const platform = `${process.platform === "win32" ? "win32" : process.platform}-${process.arch}`
+// PLATFORM selects the target triple; unset means this machine. Everything
+// downstream — the staged OpenTUI native library, the libc defines — follows it
+// rather than the build host, or a cross-build ships the wrong machine code and
+// only fails when someone runs it.
+const platform = process.env.PLATFORM ?? `${process.platform}-${process.arch}`
+const [targetOs, , targetLibc] = platform.split("-")
 
 /** Resolve a package inside bun's isolated store, whose dirs carry a content hash. */
 function pkg(name, subpath = "") {
@@ -52,6 +57,7 @@ const args = [
   OUT,
   "--target",
   process.env.NODE_TARGET ?? "26",
+  ...(process.env.PLATFORM ? ["--platform", platform] : []),
 
   // node-gyp is only reached by a build-time codepath in a dependency.
   "--external",
@@ -101,15 +107,15 @@ const args = [
   "--define",
   `OPENCODE_CHANNEL='dev'`,
   "--define",
-  `OPENCODE_LIBC=''`,
+  `OPENCODE_LIBC='${targetOs === "linux" ? (targetLibc === "musl" ? "musl" : "glibc") : ""}'`,
   "--define",
-  `FFF_LIBC='gnu'`,
+  `FFF_LIBC='${targetLibc === "musl" ? "musl" : "gnu"}'`,
   "--define-file",
   `OPENCODE_MODELS_DEV=${MODELS}`,
 ]
 
-const staged = await stageOtuiAssets(path.join(dir, "otui-assets"))
-console.log(`Staged ${staged.count} OpenTUI assets`)
+const staged = await stageOtuiAssets(path.join(dir, "otui-assets"), platform)
+console.log(`Staged ${staged.count} OpenTUI assets for ${staged.pkg}`)
 
 if (!existsSync(MODELS)) throw new Error(`missing models snapshot: ${MODELS} (curl https://models.dev/api.json)`)
 
