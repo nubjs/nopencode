@@ -40,7 +40,8 @@
     "@opencode-ai/http-recorder": "workspace:*",
     "@tsconfig/bun": "catalog:",
     "@types/bun": "catalog:",
-    "@typescript/native-preview": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@opencode-ai/nub-test": "workspace:*"
   },
   "dependencies": {
     "@smithy/eventstream-codec": "4.2.14",
