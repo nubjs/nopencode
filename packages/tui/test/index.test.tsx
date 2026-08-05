@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { run } from "../src"
 
 test("exports the canonical application lifecycle", () => {

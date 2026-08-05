@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { createSlot, createSolidSlotRegistry, testRender, useRenderer } from "@opentui/solid"
 import { onMount } from "solid-js"
 

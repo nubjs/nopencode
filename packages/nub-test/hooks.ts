@@ -23,6 +23,9 @@ import { registerHooks } from "node:module"
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { transformSync } from "esbuild"
+import { transformSync as babelTransformSync } from "@babel/core"
+import solidPreset from "babel-preset-solid"
+import tsPreset from "@babel/preset-typescript"
 // Installs the `Bun` global as a side effect. Imported here so a test file needs
 // no change: the same --import that fixes resolution also provides the global.
 import "./bun-global.ts"
@@ -141,7 +144,31 @@ registerHooks({
     // blocked hard enough that a timer set for 60s never fired. With this hook
     // removed the same import fails in under a second, which is what localised it.
     const path = fileURLToPath(url)
-    const { code } = transformSync(readFileSync(path, "utf8"), {
+    const source = readFileSync(path, "utf8")
+
+    // SolidJS JSX is a compile-to-renderer-ops pass, not a `jsx()` factory
+    // rewrite, so esbuild cannot produce it — no jsxImportSource or jsx setting
+    // substitutes. Bun does it with a plugin whose node entry deliberately throws
+    // ("@opentui/solid/preload is Bun-only"), so a suite whose JSX is Solid needs
+    // this or it cannot run on node at all.
+    //
+    // Opt-in via NUB_TEST_SOLID because applying it to non-Solid JSX would
+    // silently produce wrong output rather than an error.
+    if (process.env.NUB_TEST_SOLID && /\.[jt]sx$/.test(path) && !path.includes("node_modules")) {
+      const out = babelTransformSync(source, {
+        filename: path,
+        configFile: false,
+        babelrc: false,
+        sourceMaps: "inline",
+        presets: [
+          [solidPreset, { moduleName: "@opentui/solid", generate: "universal" }],
+          [tsPreset, { isTSX: true, allExtensions: true }],
+        ],
+      })
+      return { format: "module", source: out?.code ?? source, shortCircuit: true }
+    }
+
+    const { code } = transformSync(source, {
       loader: path.endsWith("x") ? "tsx" : "ts",
       format: "esm",
       target: "node22",

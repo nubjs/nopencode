@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { destroyRenderer } from "../../src/util/renderer"
 
 test("clears the terminal title before destroying the renderer", () => {

@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { testRender } from "@opentui/solid"
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { Schema } from "effect"
 import {
   AttentionSoundName,

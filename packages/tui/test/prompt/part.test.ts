@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { expandTrackedPastedText, stripPromptPartIDs } from "../../src/prompt/part"
 
 describe("prompt part", () => {

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { filetype } from "../../src/util/filetype"
 
 describe("util.filetype", () => {

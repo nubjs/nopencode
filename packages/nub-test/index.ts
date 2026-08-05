@@ -48,6 +48,8 @@ declare module "expect" {
     toBeOneOf(expected: unknown[]): R
     /** Bun's accepts any shape; Jest's is narrowed to records. Widen it back. */
     toMatchObject(expected: unknown): R
+    /** Bun-only; unsupported here and throws rather than silently passing. */
+    toMatchSnapshot(hint?: string): R
   }
 }
 
@@ -57,6 +59,12 @@ const pass = (received: unknown, expected: string, ok: boolean) => ({
 })
 
 jestExpect.extend({
+  toMatchSnapshot: () => {
+    throw new Error(
+      "toMatchSnapshot is not supported on the node:test shim — bun's snapshot " +
+        "store has no node:test equivalent. Assert on the value directly.",
+    )
+  },
   toBeTrue: (r: unknown) => pass(r, "true", r === true),
   toBeFalse: (r: unknown) => pass(r, "false", r === false),
   toBeString: (r: unknown) => pass(r, "a string", typeof r === "string"),
@@ -209,6 +217,9 @@ export function mock(impl?: (...args: any[]) => any): MockFn {
 }
 
 /** `mock.module` has no `node:test` equivalent; fail loudly rather than no-op. */
+/** Bun spells it `restore`; node:test spells it `restoreAll`. */
+mock.restore = () => nodeMock.restoreAll()
+
 mock.module = (specifier: string, _factory?: () => unknown) => {
   throw new Error(
     `mock.module(${JSON.stringify(specifier)}) is not supported on node:test — ` +
