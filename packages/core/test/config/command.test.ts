@@ -1,6 +1,6 @@
 import fs from "fs/promises"
 import path from "path"
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Effect, Schema } from "effect"
 import { CommandV2 } from "@opencode-ai/core/command"
 import { Config } from "@opencode-ai/core/config"

@@ -1,6 +1,6 @@
 import { OpenAIResponsesLanguageModel } from "@opencode-ai/core/github-copilot/responses/openai-responses-language-model"
 import { convertToOpenAIResponsesInput } from "@opencode-ai/core/github-copilot/responses/convert-to-openai-responses-input"
-import { describe, test, expect, mock } from "bun:test"
+import { describe, test, expect, mock } from "@opencode-ai/nub-test"
 import type { LanguageModelV3Prompt } from "@ai-sdk/provider"
 
 const TEST_PROMPT: LanguageModelV3Prompt = [{ role: "user", content: [{ type: "text", text: "Hello" }] }]

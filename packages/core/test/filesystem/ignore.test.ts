@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { Ignore } from "@opencode-ai/core/filesystem/ignore"
 
 test("match nested and non-nested", () => {

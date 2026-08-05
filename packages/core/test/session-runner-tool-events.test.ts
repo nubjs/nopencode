@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { Effect, Schema, Stream } from "effect"
 import { LLMEvent } from "@opencode-ai/llm"
 import { EventV2 } from "@opencode-ai/core/event"

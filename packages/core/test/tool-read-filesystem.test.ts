@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import path from "path"
 import { Effect, FileSystem } from "effect"
 import { LayerNodePlatform } from "@opencode-ai/core/effect/app-node-platform"

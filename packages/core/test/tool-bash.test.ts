@@ -1,7 +1,7 @@
 import fs from "fs/promises"
 import { realpathSync } from "node:fs"
 import path from "path"
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { Effect, Layer } from "effect"
 import { ChildProcess } from "effect/unstable/process"
 import { FSUtil } from "@opencode-ai/core/fs-util"

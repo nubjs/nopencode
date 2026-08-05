@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { $ } from "bun"
 import { fileURLToPath } from "url"
 import path from "path"

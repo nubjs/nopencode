@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Cause, Effect, Exit, Schema } from "effect"
 import { SystemContext } from "@opencode-ai/core/system-context"
 import { it } from "../lib/effect"

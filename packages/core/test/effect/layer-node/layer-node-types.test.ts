@@ -1,4 +1,4 @@
-import { test } from "bun:test"
+import { test } from "@opencode-ai/nub-test"
 import { Context, Effect, Layer } from "effect"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { makeGlobalNode, makeLocationNode } from "@opencode-ai/core/effect/app-node"

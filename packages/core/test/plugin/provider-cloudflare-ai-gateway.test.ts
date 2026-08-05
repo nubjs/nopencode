@@ -1,5 +1,5 @@
 import { AISDK } from "@opencode-ai/core/aisdk"
-import { describe, expect, mock } from "bun:test"
+import { describe, expect, mock } from "@opencode-ai/nub-test"
 import { Effect } from "effect"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { PluginV2 } from "@opencode-ai/core/plugin"

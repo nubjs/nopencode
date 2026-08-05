@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Tool } from "@opencode-ai/core/tool/tool"
 import { ApplicationTools } from "@opencode-ai/core/tool/application-tools"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"

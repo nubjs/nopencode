@@ -1,4 +1,4 @@
-import { describe, expect, beforeAll, beforeEach, afterAll } from "bun:test"
+import { describe, expect, beforeAll, beforeEach, afterAll } from "@opencode-ai/nub-test"
 import { Effect, Layer, Ref } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/unstable/http"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"

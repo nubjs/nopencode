@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { SessionV1 as Wire } from "@opencode-ai/schema/session-v1"
 import { SessionV1 } from "../src/v1/session"
 

@@ -1,0 +1,17 @@
+{
+  "name": "@opencode-ai/nub-test",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "bun": "./bun-impl.ts",
+      "default": "./index.ts"
+    }
+  },
+  "dependencies": {
+    "expect": "29.7.0",
+    "esbuild": "0.25.0",
+    "string-width": "7.2.0"
+  }
+}
