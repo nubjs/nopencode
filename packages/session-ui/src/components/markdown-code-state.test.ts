@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { shouldResetCodeTokens } from "./markdown-code-state"
 
 const previous = {

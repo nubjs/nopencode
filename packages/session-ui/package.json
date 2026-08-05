@@ -35,7 +35,8 @@
     "@types/luxon": "catalog:",
     "@typescript/native-preview": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "@opencode-ai/nub-test": "workspace:*"
   },
   "dependencies": {
     "@kobalte/core": "catalog:",

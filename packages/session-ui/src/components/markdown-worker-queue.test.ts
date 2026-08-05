@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { createLatestWorkerQueue } from "./markdown-worker-queue"
 
 test("keeps only the latest queued request for each key", async () => {

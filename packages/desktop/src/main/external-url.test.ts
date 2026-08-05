@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { resolveExternalURL, resolveLocalFilePath } from "./external-url"

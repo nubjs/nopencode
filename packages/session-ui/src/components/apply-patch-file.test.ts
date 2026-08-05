@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { patchFiles } from "./apply-patch-file"
 import { text } from "./session-diff"
 

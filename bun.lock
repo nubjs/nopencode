@@ -152,6 +152,7 @@
         "typescript": "catalog:",
       },
       "devDependencies": {
+        "@opencode-ai/nub-test": "workspace:*",
         "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
@@ -400,6 +401,7 @@
         "@actions/artifact": "4.0.0",
         "@lydell/node-pty": "catalog:",
         "@opencode-ai/app": "workspace:*",
+        "@opencode-ai/nub-test": "workspace:*",
         "@opencode-ai/ui": "workspace:*",
         "@sentry/solid": "catalog:",
         "@sentry/vite-plugin": "catalog:",
@@ -846,6 +848,7 @@
         "strip-ansi": "7.1.2",
       },
       "devDependencies": {
+        "@opencode-ai/nub-test": "workspace:*",
         "@tsconfig/node22": "catalog:",
         "@types/bun": "catalog:",
         "@types/katex": "0.16.7",

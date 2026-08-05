@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { createWorkerTransport } from "./markdown-worker-transport"
 
 test("posts one request and retains only the latest queued snapshot per key", () => {

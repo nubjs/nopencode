@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { createUpdaterController, type UpdaterBackend, type UpdaterReadyRecord } from "./updater-controller"
 
 function setup(input?: { currentVersion?: string; ready?: UpdaterReadyRecord }) {

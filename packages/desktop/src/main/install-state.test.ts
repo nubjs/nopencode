@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { hasExistingAppState } from "./install-state"
 
 const file = (name: string) => ({ name, isDirectory: () => false })

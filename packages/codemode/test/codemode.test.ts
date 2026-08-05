@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { Cause, Effect, Schema } from "effect"
 import { CodeMode, Tool, toolError } from "../src/index.js"
 

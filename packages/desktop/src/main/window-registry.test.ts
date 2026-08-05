@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { createWindowRegistry } from "./window-registry"
 
 function setup(initial: unknown = []) {
