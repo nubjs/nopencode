@@ -129,6 +129,7 @@
         "@effect/platform-node": "catalog:",
         "@opencode-ai/core": "workspace:*",
         "@opencode-ai/httpapi-codegen": "workspace:*",
+        "@opencode-ai/nub-test": "workspace:*",
         "@opencode-ai/server": "workspace:*",
         "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
@@ -185,6 +186,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@opencode-ai/nub-test": "workspace:*",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
         "@webgpu/types": "0.1.54",
@@ -210,6 +212,7 @@
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
+        "@opencode-ai/nub-test": "workspace:*",
         "@tsconfig/node22": "22.0.2",
         "@types/bun": "catalog:",
         "@types/node": "catalog:",
@@ -748,6 +751,7 @@
         "effect": "catalog:",
       },
       "devDependencies": {
+        "@opencode-ai/nub-test": "workspace:*",
         "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",

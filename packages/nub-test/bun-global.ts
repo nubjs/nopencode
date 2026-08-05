@@ -18,7 +18,7 @@
 import { spawn as nodeSpawn, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { createServer } from "node:http"
-import { mkdirSync, existsSync } from "node:fs"
+import { globSync, mkdirSync, existsSync } from "node:fs"
 import { readFile, writeFile } from "node:fs/promises"
 import { dirname, resolve as resolvePath } from "node:path"
 import stringWidthPkg from "string-width"
@@ -105,6 +105,16 @@ const BunShim = {
   },
   readableStreamToText: async (stream: ReadableStream) => new Response(stream).text(),
   /**
+   * `Bun.gc(true)` forces a synchronous collection. Node only exposes `global.gc`
+   * under --expose-gc, so this is best-effort: callers use it to drop lingering
+   * handles (SQLite WAL files on Windows) before a teardown that retries anyway,
+   * so a no-op degrades to a slower retry rather than a failure.
+   */
+  gc: (_sync?: boolean) => {
+    const g = (globalThis as { gc?: () => void }).gc
+    if (g) g()
+  },
+  /**
    * Bun.hash returns a 64-bit number. Node has no equivalent primitive, so take
    * the first 8 bytes of a sha256 — stable across runs and platforms, which is
    * what callers rely on, though NOT byte-compatible with Bun's own wyhash.
@@ -118,13 +128,22 @@ const BunShim = {
   get argv() {
     return process.argv
   },
+  /**
+   * `Bun.Glob` over node's `fs.globSync`. Bun yields paths RELATIVE to the scan
+   * root and node's glob does too when given `cwd`, so the shapes line up.
+   * `scan()` is async-iterable, `scanSync()` returns an array — the suite uses both.
+   */
   Glob: class {
     pattern: string
     constructor(pattern: string) {
       this.pattern = pattern
     }
-    scan(): AsyncIterable<string> {
-      throw new Error(`Bun.Glob is not implemented on the node:test shim (pattern ${this.pattern})`)
+    scanSync(options?: string | { cwd?: string; onlyFiles?: boolean }): string[] {
+      const cwd = typeof options === "string" ? options : (options?.cwd ?? process.cwd())
+      return globSync(this.pattern, { cwd }) as string[]
+    }
+    async *scan(options?: string | { cwd?: string; onlyFiles?: boolean }): AsyncIterable<string> {
+      for (const entry of this.scanSync(options)) yield entry
     }
   },
   Transpiler: class {

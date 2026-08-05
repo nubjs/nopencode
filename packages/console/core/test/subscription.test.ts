@@ -1,4 +1,4 @@
-import { describe, expect, test, setSystemTime, afterEach } from "bun:test"
+import { describe, expect, test, setSystemTime, afterEach } from "@opencode-ai/nub-test"
 import { Subscription } from "../src/subscription"
 import { centsToMicroCents } from "../src/util/price"
 
