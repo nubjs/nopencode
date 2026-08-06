@@ -34,6 +34,9 @@ import "./bun-global.ts"
 const CANDIDATES = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]
 const TS = /\.[cm]?tsx?$/
 const TEXT_ASSET = /\.(txt|sql|prompt|md)$/
+/** solid-js's and solid-js/store's SSR builds — see the redirect in `resolve`. */
+const SOLID_SSR = /\/node_modules\/solid-js\/(store\/)?dist\/server\.js$/
+const SOLID_STORE = /\/solid-js\/store\/dist\/server\.js$/
 
 /**
  * Resolve symlinks before handing a URL back.
@@ -98,7 +101,26 @@ registerHooks({
     const found = resolveExtensionless(specifier, context.parentURL)
     if (found) return { url: found, shortCircuit: true }
     try {
-      return nextResolve(specifier, context)
+      const resolved = nextResolve(specifier, context)
+      // Solid's exports map sends every non-browser runtime to its SSR build —
+      // node and Bun resolve `solid-js` identically, both to `dist/server.js`,
+      // which throws "getContextId cannot be used under non-hydrating context"
+      // as soon as a component mounts. A TUI is a client renderer, so redirect
+      // to the client build the way OpenTUI's own Bun plugin does.
+      //
+      // In RESOLVE, not by swapping the file's contents at the SSR url: the two
+      // entries of `@opentui/solid` disagree about the specifier — the Bun one
+      // imports `solid-js`, the node one `solid-js/dist/solid.js` — so a content
+      // swap leaves node with TWO module instances of solid, app code on one and
+      // the renderer on the other. Solid's context registry is per-instance, so
+      // the symptom is a bare "No renderer found". Rewriting the url merges them.
+      //
+      // Narrower than `--conditions=browser`, which would redirect every other
+      // package that branches on `browser` too.
+      if (SOLID_SSR.test(resolved.url)) {
+        return { ...resolved, url: resolved.url.replace(/server\.js$/, SOLID_STORE.test(resolved.url) ? "store.js" : "solid.js") }
+      }
+      return resolved
     } catch (err: any) {
       // A BARE specifier can be extensionless too — a package subpath like
       // `@parcel/watcher/wrapper`, which Bun resolves and Node does not. Retrying
@@ -123,6 +145,7 @@ registerHooks({
     if (!url.startsWith("file:")) return nextLoad(url, context)
     const pathname = new URL(url).pathname
 
+
     // Bun imports text assets as a default-exported string. Node has no loader
     // for them, so the suite dies on `Unknown file extension ".txt"`. Measured in
     // the source: .txt(36) .sql(10) .prompt(3) .md(1) — prompts and SQL, all read
@@ -133,6 +156,20 @@ registerHooks({
       return {
         format: "module",
         source: `export default ${JSON.stringify(text)}`,
+        shortCircuit: true,
+      }
+    }
+
+    // Bun's `with { type: "file" }` yields the asset's absolute PATH as the
+    // default export, not its contents — the TUI imports three .mp3 files that
+    // way and passes the path to a player. Node has no such attribute, so it
+    // reaches the extension check and dies on `Unknown file extension ".mp3"`.
+    // Keyed on the ATTRIBUTE rather than the extension: it is what the author
+    // wrote, so an asset type nobody declared still fails honestly.
+    if ((context as { importAttributes?: { type?: string } }).importAttributes?.type === "file") {
+      return {
+        format: "module",
+        source: `export default ${JSON.stringify(fileURLToPath(url))}`,
         shortCircuit: true,
       }
     }

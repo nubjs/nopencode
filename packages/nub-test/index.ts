@@ -15,11 +15,13 @@ import {
   afterEach,
   before,
   beforeEach,
-  describe,
+  describe as nodeDescribe,
   it,
   mock as nodeMock,
 } from "node:test"
 import { expect as jestExpect } from "expect"
+import { existsSync, readFileSync } from "node:fs"
+import { basename, dirname } from "node:path"
 
 /**
  * Bun's `expect` carries matchers Jest's does not. Counted across the suite:
@@ -53,17 +55,84 @@ declare module "expect" {
   }
 }
 
+/**
+ * Bun's snapshot store, read-only.
+ *
+ * A `.snap` file is a CommonJS module of `exports[\`<full test name> <n>\`] = \`…\`;`
+ * — Jest's format, which Bun writes verbatim. Evaluating it is what un-escapes the
+ * template literals, so the values come back exactly as pretty-format wrote them.
+ *
+ * Keyed on the full name (enclosing describes + the test name) and a per-name
+ * counter, so a test calling it twice reads `… 1` then `… 2` — matching how Bun
+ * assigns them, which is the only way the committed keys line up.
+ */
+const snapshotCounts = new Map<string, number>()
+let snapshotStore: Map<string, string> | undefined
+let currentTestName = ""
+let suitePath: string[] = []
+
+const snapshotKey = () => currentTestName
+const nextSnapshotIndex = () => {
+  const n = (snapshotCounts.get(currentTestName) ?? 0) + 1
+  snapshotCounts.set(currentTestName, n)
+  return n
+}
+
+/** node:test runs one file per process, so argv names the file under test. */
+function snapshotPath(): string {
+  const file = process.argv[1] ?? ""
+  return `${dirname(file)}/__snapshots__/${basename(file)}.snap`
+}
+
+function loadSnapshots(): Map<string, string> {
+  if (snapshotStore) return snapshotStore
+  snapshotStore = new Map()
+  const path = snapshotPath()
+  if (!existsSync(path)) return snapshotStore
+  const exported: Record<string, string> = {}
+  new Function("exports", readFileSync(path, "utf8"))(exported)
+  for (const [k, v] of Object.entries(exported)) {
+    // Bun brackets every value with newlines inside the template literal.
+    snapshotStore.set(k, v.replace(/^\n/, "").replace(/\n$/, ""))
+  }
+  return snapshotStore
+}
+
+/**
+ * pretty-format's output for the values this suite snapshots. A string is
+ * printed inside double quotes with NO inner escaping — verified against the
+ * committed files, which contain unescaped `"` in the payload.
+ *
+ * Anything else throws rather than guessing at pretty-format's object layout,
+ * which would produce a confident mismatch instead of an honest gap.
+ */
+function serializeSnapshot(value: unknown): string {
+  if (typeof value === "string") return `"${value}"`
+  throw new Error(`toMatchSnapshot on the node:test shim supports strings only, got ${typeof value}`)
+}
+
 const pass = (received: unknown, expected: string, ok: boolean) => ({
   pass: ok,
   message: () => `expected ${JSON.stringify(received)} ${ok ? "not " : ""}to be ${expected}`,
 })
 
 jestExpect.extend({
-  toMatchSnapshot: () => {
-    throw new Error(
-      "toMatchSnapshot is not supported on the node:test shim — bun's snapshot " +
-        "store has no node:test equivalent. Assert on the value directly.",
-    )
+  toMatchSnapshot(received: unknown) {
+    const key = `${snapshotKey()} ${nextSnapshotIndex()}`
+    const store = loadSnapshots()
+    const expected = store.get(key)
+    if (expected === undefined) {
+      // Deliberately does NOT write. Bun records a missing snapshot and passes;
+      // here the committed file IS the oracle — the whole point is to check node
+      // renders what Bun recorded, and a shim that writes its own answer would
+      // pass no matter what it rendered.
+      return { pass: false, message: () => `no committed snapshot for ${JSON.stringify(key)} in ${snapshotPath()}` }
+    }
+    const actual = serializeSnapshot(received)
+    return {
+      pass: actual === expected,
+      message: () => `snapshot ${JSON.stringify(key)} did not match\n\nexpected:\n${expected}\n\nreceived:\n${actual}`,
+    }
   },
   toBeTrue: (r: unknown) => pass(r, "true", r === true),
   toBeFalse: (r: unknown) => pass(r, "false", r === false),
@@ -109,7 +178,32 @@ const expect = Object.assign(
   jestExpect,
 ) as typeof jestExpect & ((received: unknown, message?: string) => ReturnType<typeof jestExpect>)
 
-export { describe, it, beforeEach, afterEach, expect }
+/**
+ * `describe` is wrapped only to record the suite path for snapshot keys. Bun
+ * keys a snapshot on the FULL name — enclosing describes plus the test name —
+ * so without this every key is short by its prefix and nothing matches.
+ *
+ * The callback runs at REGISTRATION and synchronously, so a push/pop stack is
+ * correct here even for nested suites; the path is captured per test as it
+ * registers, not read at run time when the stack is long since unwound.
+ */
+function describeWrapper(name: string, fn?: () => void) {
+  return (nodeDescribe as any)(name, () => {
+    suitePath.push(name)
+    try {
+      return fn?.()
+    } finally {
+      suitePath.pop()
+    }
+  })
+}
+export const describe = Object.assign(describeWrapper, {
+  only: (nodeDescribe as any).only,
+  skip: (nodeDescribe as any).skip,
+  todo: (nodeDescribe as any).todo,
+})
+
+export { it, beforeEach, afterEach, expect }
 
 /** Helper files import this type alongside `test`; node's shape is compatible. */
 export type TestOptions = { timeout?: number; skip?: boolean | string; only?: boolean; todo?: boolean | string }
@@ -145,7 +239,33 @@ function runner(name: string, a?: any, b?: any) {
   const fn = typeof a === "function" ? a : b
   const opts = typeof a === "function" ? b : a
   const options = typeof opts === "number" ? { timeout: opts } : opts
-  return options ? (it as any)(name, options, fn) : (it as any)(name, fn)
+  const body = named([...suitePath, name].join(" "), fn)
+  return options ? (it as any)(name, options, body) : (it as any)(name, body)
+}
+
+/**
+ * Publish the running test's full name so `toMatchSnapshot` can key on it.
+ * Set inside the test body rather than at registration because registration
+ * order is not run order, and restored after so a failure cannot leak a stale
+ * name into the next test's key.
+ */
+function named(fullName: string, fn: any) {
+  if (typeof fn !== "function") return fn
+  return function (this: any, ...args: any[]) {
+    const previous = currentTestName
+    currentTestName = fullName
+    try {
+      const out = fn.apply(this, args)
+      if (out && typeof out.finally === "function") {
+        return out.finally(() => {
+          currentTestName = previous
+        })
+      }
+      return out
+    } finally {
+      if (!fn.constructor || fn.constructor.name !== "AsyncFunction") currentTestName = previous
+    }
+  }
 }
 
 const variant = (kind: "only" | "skip" | "todo") => (name: string, a?: any, b?: any) => {
@@ -220,12 +340,22 @@ export function mock(impl?: (...args: any[]) => any): MockFn {
 /** Bun spells it `restore`; node:test spells it `restoreAll`. */
 mock.restore = () => nodeMock.restoreAll()
 
-mock.module = (specifier: string, _factory?: () => unknown) => {
-  throw new Error(
-    `mock.module(${JSON.stringify(specifier)}) is not supported on node:test — ` +
-      `use a dependency-injection seam, or node's module mocking behind ` +
-      `--experimental-test-module-mocks`,
-  )
+mock.module = (specifier: string, factory?: () => any) => {
+  const nodeModuleMock = (nodeMock as unknown as { module?: Function }).module
+  if (typeof nodeModuleMock !== "function") {
+    throw new Error(
+      `mock.module(${JSON.stringify(specifier)}) needs node's ` +
+        `--experimental-test-module-mocks flag, which is not enabled`,
+    )
+  }
+  // Bun's factory returns the replacement module object; node wants named
+  // exports and the default separated, so unpack rather than pass it through.
+  const replacement = factory?.() ?? {}
+  const { default: defaultExport, ...namedExports } = replacement
+  return (nodeMock as any).module(specifier, {
+    namedExports,
+    ...(defaultExport === undefined ? {} : { defaultExport }),
+  })
 }
 
 export function spyOn<T extends object>(object: T, method: keyof T): MockFn {
