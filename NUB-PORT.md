@@ -270,3 +270,40 @@ Consequence: the TUI runs, and third-party TUI plugins that import the Solid/Ope
 
 - **`--experimental-ffi`.** `@opentui/core` has a `node:ffi` backend that Node 26 gates behind this flag. The TUI renders *without* it — that path degrades to `createUnsupportedBackend` and the render library loads through the staged asset root instead — so it is not required today. It would be needed by anything that reaches the FFI struct helpers. Bun bakes flags in with `compile.execArgv`; `nub compile` has no equivalent, so the only lever is `NODE_OPTIONS` in the environment.
 - **`--use-system-ca`.** Baked in by the Bun build. Node has the same flag since v23.8, and the same problem baking it in.
+
+## Running the test suite on stock Node
+
+The suite is written against `bun:test`. `packages/nub-test` runs it on stock Node instead, so the same tests check both runtimes. The Bun path is preserved by a `bun` export condition, which means `bun test` still runs Bun's own runner and stays a usable control — without that, rewriting the imports silently replaces the baseline you are comparing against.
+
+| package | Bun | node:test |
+| --- | --- | --- |
+| `core` | 1080 / 0 | 901 / 39 |
+| `llm` | 298 / 0 | 298 / 0 |
+| `codemode` | 263 / 0 | 263 / 0 |
+| `tui` | 168 / 5 | 190 / 2 |
+| `session-ui` | 76 / 0 | 76 / 0 |
+| `desktop` | 70 / 1 | 70 / 1 |
+| `console` | 19 / 2 | 16 / 3 |
+| `client` | 16 / 0 | 15 / 1 |
+| `schema` | 13 / 2 | 13 / 2 |
+
+`tui` needs three flags and one env var:
+
+```sh
+NUB_TEST_SOLID=1 OTUI_ASSET_ROOT=<repo>/packages/opencode/otui-assets \
+  node --experimental-ffi --experimental-test-module-mocks \
+       --import ../nub-test/hooks.ts --test --test-force-exit 'test/**/*.test.tsx'
+```
+
+`--experimental-ffi` is what OpenTUI's native backend needs; without it every renderer test fails with "OpenTUI native FFI is not available for this runtime yet". `--test-force-exit` is needed because one file leaks a handle and Node otherwise waits on it forever — Bun exits regardless.
+
+What the shim has to bridge, beyond renaming `beforeAll` to `before`:
+
+- **Extensionless and NodeNext imports.** Bun resolves `./agent` to `./agent.ts`, and `./plugin.js` to `plugin.ts`. Node does neither.
+- **Non-erasable TypeScript.** Node strips types but refuses parameter properties and enums, so the load hook compiles with esbuild.
+- **Symlink canonicalisation.** Node keys its module cache on the resolved URL, so two spellings of one file are two modules. Under the workspace store one driver was instantiated 252 times and the resolver never terminated.
+- **SolidJS JSX**, which is a compile-to-renderer-ops pass rather than a `jsx()` factory rewrite — no esbuild setting produces it.
+- **`solid-js` resolving to its SSR build.** Both runtimes resolve it identically; OpenTUI's Bun plugin swaps in the client build, and the shim redirects to it in `resolve` so app code and the renderer share one module instance.
+- **Bun's own APIs** — the `Bun` global, `bun:sqlite`, the `$` shell, `with { type: "file" }` assets, and snapshots read from Bun's committed `.snap` files.
+
+Anything not implemented throws. A silently missing API turns a real assertion into a passing no-op, which is the one failure mode a migration like this must not have.
