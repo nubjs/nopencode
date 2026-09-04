@@ -1,4 +1,4 @@
-import { Database } from "./nub-sqlite"
+import { DatabaseSync } from "node:sqlite"
 import { statSync } from "node:fs"
 import { readFile as readFileAsync } from "node:fs/promises"
 import os from "node:os"
@@ -87,11 +87,11 @@ export async function resolveZedSelection(dbPath: string, cwd = process.cwd()): 
 }
 
 function queryZedActiveEditor(dbPath: string, cwd: string) {
-  let db: Database | undefined
+  let db: DatabaseSync | undefined
   try {
-    db = new Database(dbPath, { readonly: true })
+    db = new DatabaseSync(dbPath, { readOnly: true })
     const raw = db
-      .query(
+      .prepare(
         `select
           i.kind as item_kind,
           e.item_id as editor_id,
@@ -131,11 +131,11 @@ function queryZedActiveEditor(dbPath: string, cwd: string) {
 }
 
 function queryZedEditorSelections(dbPath: string, row: ZedActiveEditorRow) {
-  let db: Database | undefined
+  let db: DatabaseSync | undefined
   try {
-    db = new Database(dbPath, { readonly: true })
+    db = new DatabaseSync(dbPath, { readOnly: true })
     const raw = db
-      .query(
+      .prepare(
         `select
           start as selection_start,
           end as selection_end
@@ -159,12 +159,12 @@ function queryZedEditorSelections(dbPath: string, row: ZedActiveEditorRow) {
 }
 
 function queryZedEditorContents(dbPath: string, row: ZedActiveEditorRow) {
-  let db: Database | undefined
+  let db: DatabaseSync | undefined
   try {
-    db = new Database(dbPath, { readonly: true })
+    db = new DatabaseSync(dbPath, { readOnly: true })
     const parsed = decodeZedEditorContents(
       db
-        .query(
+        .prepare(
           `select contents
         from editors
         where item_id = $editorID and workspace_id = $workspaceID`,

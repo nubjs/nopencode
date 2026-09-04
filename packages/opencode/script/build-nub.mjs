@@ -13,7 +13,7 @@
  *   files: { virtual modules }   real files + --alias
  *   entrypoints: [main, worker]  the worker is a literal `new Worker(new URL())`
  *   minify: true                 default
- *   compile.execArgv             (no equivalent — see NODE_OPTIONS note below)
+ *   compile.execArgv             --node-options
  *
  * Run the Solid transform before this script; it is a separate step so a rebuild
  * does not re-walk the tree.

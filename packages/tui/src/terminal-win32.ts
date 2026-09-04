@@ -1,16 +1,42 @@
-import { dlopen, ptr } from "./nub-ffi"
+import { createRequire } from "node:module"
 import type { ReadStream } from "node:tty"
 
 const STD_INPUT_HANDLE = -10
 const ENABLE_PROCESSED_INPUT = 0x0001
 
-const kernel = () =>
-  dlopen("kernel32.dll", {
-    GetStdHandle: { args: ["i32"], returns: "ptr" },
-    GetConsoleMode: { args: ["ptr", "ptr"], returns: "i32" },
-    SetConsoleMode: { args: ["ptr", "u32"], returns: "i32" },
-    FlushConsoleInputBuffer: { args: ["ptr"], returns: "i32" },
+// `node:ffi` in place of `bun:ffi`. Node 26 gates the module behind
+// `--experimental-ffi`, which a `nub compile` binary passes on its own (and it
+// silences the ExperimentalWarning). Loaded lazily, and only on Windows, so the
+// other platforms never touch the module.
+const require = createRequire(import.meta.url)
+
+// The slice of node:ffi this file calls. @types/node 24 predates the module,
+// so the shape is declared here rather than imported.
+type NodeFfi = {
+  dlopen(
+    path: string,
+    definitions: Record<string, { arguments: string[]; return: string }>,
+  ): { functions: Record<string, (...args: any[]) => any> }
+  getRawPointer(source: ArrayBuffer | ArrayBufferView): bigint
+}
+
+type Kernel32 = {
+  GetStdHandle: (handle: number) => bigint
+  GetConsoleMode: (handle: bigint, mode: bigint) => number
+  SetConsoleMode: (handle: bigint, mode: number) => number
+  FlushConsoleInputBuffer: (handle: bigint) => number
+}
+
+const kernel = () => {
+  const ffi = require("node:ffi") as NodeFfi
+  const { functions } = ffi.dlopen("kernel32.dll", {
+    GetStdHandle: { arguments: ["i32"], return: "pointer" },
+    GetConsoleMode: { arguments: ["pointer", "pointer"], return: "i32" },
+    SetConsoleMode: { arguments: ["pointer", "u32"], return: "i32" },
+    FlushConsoleInputBuffer: { arguments: ["pointer"], return: "i32" },
   })
+  return { symbols: functions as unknown as Kernel32, ptr: ffi.getRawPointer }
+}
 
 let k32: ReturnType<typeof kernel> | undefined
 
@@ -34,7 +60,7 @@ export function win32DisableProcessedInput() {
 
   const handle = k32!.symbols.GetStdHandle(STD_INPUT_HANDLE)
   const buf = new Uint32Array(1)
-  if (k32!.symbols.GetConsoleMode(handle, ptr(buf)) === 0) return
+  if (k32!.symbols.GetConsoleMode(handle, k32!.ptr(buf)) === 0) return
 
   const mode = buf[0]!
   if ((mode & ENABLE_PROCESSED_INPUT) === 0) return
@@ -78,11 +104,11 @@ export function win32InstallCtrlCGuard() {
   const handle = k32!.symbols.GetStdHandle(STD_INPUT_HANDLE)
   const buf = new Uint32Array(1)
 
-  if (k32!.symbols.GetConsoleMode(handle, ptr(buf)) === 0) return
+  if (k32!.symbols.GetConsoleMode(handle, k32!.ptr(buf)) === 0) return
   const initial = buf[0]!
 
   const enforce = () => {
-    if (k32!.symbols.GetConsoleMode(handle, ptr(buf)) === 0) return
+    if (k32!.symbols.GetConsoleMode(handle, k32!.ptr(buf)) === 0) return
     const mode = buf[0]!
     if ((mode & ENABLE_PROCESSED_INPUT) === 0) return
     k32!.symbols.SetConsoleMode(handle, mode & ~ENABLE_PROCESSED_INPUT)

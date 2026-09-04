@@ -53,7 +53,7 @@ Two caveats worth carrying:
 - **Startup is ~3 s warm** there against 772 ms on macOS. Root-caused below — it is neither Defender nor disk.
 - **The launcher was linked with `x86_64-pc-windows-gnu`**, because that is what `cargo-zigbuild` can produce from macOS. The release pipeline uses `x86_64-pc-windows-msvc`. It worked, but a gnu-linked launcher is a different CRT and should not be assumed equivalent for shipping.
 
-`packages/tui/src/nub-ffi.ts` is a throwing stub, so the Windows Ctrl-C console guard is absent — untested, and it would need `node:ffi` behind `--experimental-ffi` or a small addon.
+The Ctrl-C console guard in `terminal-win32.ts` now goes through `node:ffi`. Its kernel32 calls were exercised on a clean Windows Server 2022 box from a `nub compile` binary cross-built on macOS: `dlopen("kernel32.dll")`, `GetConsoleMode` on the console input handle (`0x1f7`), `SetConsoleMode` clearing `ENABLE_PROCESSED_INPUT` (`0x1f6`), restore, and `FlushConsoleInputBuffer` all returned success. The guard inside the TUI itself was not driven interactively there — an SSH session has no TTY stdin, so the guard's own early return takes over. Two things that box also showed: the v0.8.3 launcher imports `VCRUNTIME140.dll` and dies with `STATUS_DLL_NOT_FOUND` on a machine without the VC++ redistributable (nub `main` already links the CRT statically), and a launcher older than the `nub` that compiled the payload refuses it (`compiled payload format version 3 is unsupported`).
 
 ## Suggestion: the warm-start check is O(payload), and it dominates startup
 
@@ -193,7 +193,7 @@ Option 1 solves the demonstrated problem; option 2 solves the general one.
 | `define: { … }` | `--define`, and `--define-file` for the models.dev payload |
 | `files: { … }` in-memory modules | real files, reached with `--alias` |
 | `entrypoints: [main, tuiWorker, …]` | one entry; the TUI worker is found from a literal `new Worker(new URL(…, import.meta.url))` |
-| `compile.execArgv` | **no equivalent** — see below |
+| `compile.execArgv` | `--node-options` |
 | `minify`, `splitting`, `format: "esm"` | defaults |
 
 ## Source changes, and why each one is needed
@@ -202,11 +202,9 @@ Option 1 solves the demonstrated problem; option 2 solves the general one.
 | --- | --- |
 | `packages/opencode/src/nub/bun-compat.ts` | new — installs the `Bun` global over Node builtins. Only the five members the shipped graph calls: `stringWidth`, `file`, `write`, `stdin`, `hash`. Imported first from both compiled roots. |
 | `packages/opencode/src/nub/web-ui-empty.ts` | new — stands in for `opencode-web-ui.gen.ts`, the module `script/build.ts` generates and injects as a virtual file. Equivalent to upstream's own `--skip-embed-web-ui`. |
-| `packages/tui/src/nub-sqlite.ts` | new — the slice of `bun:sqlite` `editor-zed.ts` uses, on `node:sqlite`. |
-| `packages/tui/src/nub-ffi.ts` | new — stands in for `bun:ffi`. Exact on non-Windows, where every call site is platform-guarded; a real gap on Windows, documented in the file. |
+| `packages/tui/src/editor-zed.ts` | `bun:sqlite` → `node:sqlite`: `DatabaseSync`, `prepare()`, `readOnly`. |
+| `packages/tui/src/terminal-win32.ts` | `bun:ffi` → `node:ffi`, loaded lazily and only on Windows. Same four kernel32 calls; `node:ffi` spells a signature `{ arguments, return }` and hands back `functions`, and a buffer becomes a pointer through `getRawPointer`. The build bakes `--experimental-ffi` in (below). |
 | `packages/tui/src/{component/dialog-status.tsx, component/prompt/autocomplete.tsx}`, `packages/opencode/src/cli/cmd/run/footer.prompt.tsx` | `fileURLToPath` / `pathToFileURL` from `"bun"` → `"node:url"` |
-| `packages/tui/src/editor-zed.ts` | `bun:sqlite` → the shim above |
-| `packages/tui/src/terminal-win32.ts` | `bun:ffi` → the shim above |
 | `packages/opencode/src/cli/cmd/tui.ts` | the worker specifier moves inline into the `new Worker(...)` call — a specifier that reaches the constructor through a variable is invisible to the build, which would ship the worker entry untranspiled, as data. The worker's type import also becomes `import type`: the inline `import { type rpc }` form leaves a real import, so the worker body runs on the main thread and throws `onmessage is not defined`. |
 | `packages/opencode/src/index.ts`, `src/cli/tui/worker.ts` | import the `Bun`-global shim first |
 | `packages/opencode/package.json` | `string-width` (what `Bun.stringWidth` becomes); `babel-preset-solid` + `@babel/preset-typescript` for the transform |
@@ -247,7 +245,8 @@ Two things this replaced: a `require()` of the platform package fails, because i
 
 Consequence: the TUI runs, and third-party TUI plugins that import the Solid/OpenTUI runtime do not get the host's instances. Every built-in plugin is bundled and unaffected.
 
-## Two things that need a flag `nub compile` does not have
+## Node flags
 
-- **`--experimental-ffi`.** `@opentui/core` has a `node:ffi` backend that Node 26 gates behind this flag. The TUI renders *without* it — that path degrades to `createUnsupportedBackend` and the render library loads through the staged asset root instead — so it is not required today. It would be needed by anything that reaches the FFI struct helpers. Bun bakes flags in with `compile.execArgv`; `nub compile` has no equivalent, so the only lever is `NODE_OPTIONS` in the environment.
-- **`--use-system-ca`.** Baked in by the Bun build. Node has the same flag since v23.8, and the same problem baking it in.
+A compiled binary already runs Node with `--experimental-ffi` (nub injects it on 26.1+, with `--disable-warning=ExperimentalWarning`), so `node:ffi` needs nothing from this build — verified by printing `process.execArgv` from a binary compiled with no `--node-options`. `@opentui/core`'s own `node:ffi` backend gets the flag the same way.
+
+`--node-options` is the `compile.execArgv` equivalent for anything else. `--use-system-ca`, which the Bun build bakes in, is not passed yet; Node has the flag since v23.8.
