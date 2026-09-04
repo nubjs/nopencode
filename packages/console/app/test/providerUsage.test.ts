@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import type { ZenData } from "@opencode-ai/console-core/model.js"
 import type { ProviderHelper } from "../src/routes/zen/util/provider/provider"
 import { anthropicHelper } from "../src/routes/zen/util/provider/anthropic"

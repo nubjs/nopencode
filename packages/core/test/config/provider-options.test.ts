@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { ConfigProviderOptionsV1 } from "@opencode-ai/core/v1/config/provider-options"
 
 describe("ConfigProviderOptionsV1", () => {

@@ -1,4 +1,4 @@
-import { expect } from "bun:test"
+import { expect } from "@opencode-ai/nub-test"
 import { Effect, Schema } from "effect"
 import {
   LLM,

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { join, dirname, resolve } from "node:path"
 import { existsSync } from "node:fs"
 import { fileURLToPath } from "node:url"

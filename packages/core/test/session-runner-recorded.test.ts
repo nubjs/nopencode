@@ -32,7 +32,7 @@ import { SystemContextRegistry } from "@opencode-ai/core/system-context/registry
 import { SystemContext } from "@opencode-ai/core/system-context"
 import { SkillGuidance } from "@opencode-ai/core/skill/guidance"
 import { ReferenceGuidance } from "@opencode-ai/core/reference/guidance"
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { eq } from "drizzle-orm"
 import { Effect, Layer } from "effect"
 import path from "node:path"

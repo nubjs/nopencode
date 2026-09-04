@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { SessionCompaction } from "@opencode-ai/core/session/compaction"
 
 test("compaction prompt preserves detailed work state and relevant files", () => {

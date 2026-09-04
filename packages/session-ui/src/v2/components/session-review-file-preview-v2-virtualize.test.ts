@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { shouldVirtualizeReviewDiff } from "./session-review-file-preview-v2-virtualize"
 
 describe("shouldVirtualizeReviewDiff", () => {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect } from "bun:test"
+import { beforeEach, describe, expect } from "@opencode-ai/nub-test"
 import path from "path"
 import { Effect, Exit, Layer, PlatformError } from "effect"
 import { Config } from "@opencode-ai/core/config"

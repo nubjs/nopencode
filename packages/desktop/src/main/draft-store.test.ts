@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { createDesktopDraftStore } from "./draft-store"
 
 test("flushes the latest buffered draft and stores blobs", () => {

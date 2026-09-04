@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 
 // Regression test for the prompt submit race in
 // packages/tui/src/component/prompt/index.tsx (`submit`).

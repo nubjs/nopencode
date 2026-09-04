@@ -1,4 +1,4 @@
-import { expect, mock, test } from "bun:test"
+import { expect, mock, test } from "@opencode-ai/nub-test"
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import { createTestRenderer } from "@opentui/core/testing"
 import { Effect } from "effect"

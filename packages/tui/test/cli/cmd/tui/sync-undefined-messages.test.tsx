@@ -6,7 +6,7 @@
  * The failure path is `sync.tsx#sync.session.sync` reading
  * `messages.data!` while the SDK leaves `data` undefined on error.
  */
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { tmpdir } from "../../../fixture/fixture"
 import { directory, json, mount } from "./sync-fixture"
 

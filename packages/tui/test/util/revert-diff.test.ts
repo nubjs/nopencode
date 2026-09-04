@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { getRevertDiffFiles } from "../../src/util/revert-diff"
 
 describe("revert diff", () => {

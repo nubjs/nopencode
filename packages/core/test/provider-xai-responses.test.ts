@@ -1,5 +1,5 @@
 import { createXai } from "@ai-sdk/xai"
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 
 test("xAI Responses sends promptCacheKey as prompt_cache_key", async () => {
   let body: Record<string, unknown> | undefined

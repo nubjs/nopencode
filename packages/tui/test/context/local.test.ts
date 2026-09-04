@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { parseModel, recentModels } from "../../src/context/local"
 
 test("parses model IDs containing slashes", () => {

@@ -1,5 +1,5 @@
 import path from "path"
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { Effect } from "effect"
 import { NpmConfig } from "@opencode-ai/core/npm-config"
 import { tmpdir } from "./fixture/tmpdir"

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { sessionEpilogue } from "../../src/util/presentation"
 
 test("formats session continuation summary", () => {

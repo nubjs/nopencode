@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { createPluginRuntime } from "../../src/plugin/runtime"
 
 test("routes use the latest registration and restore previous registrations", () => {

@@ -55,8 +55,12 @@ const args = [
   "src/index.ts",
   "--out",
   OUT,
+  // A full version, not the bare major. `--target 26` resolves to a different
+  // patch in each shape — 26.6.0 embedded, 26.0.0 under --smol — and the TUI
+  // needs the newer one: on 26.0.0 OpenTUI cannot bring up its native backend
+  // and dies with "OpenTUI native FFI is not available for this runtime yet".
   "--target",
-  process.env.NODE_TARGET ?? "26",
+  process.env.NODE_TARGET ?? "26.6.0",
   ...(process.env.PLATFORM ? ["--platform", platform] : []),
   ...(process.env.SMOL ? ["--smol"] : []),
 

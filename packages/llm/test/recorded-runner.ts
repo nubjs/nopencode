@@ -1,4 +1,4 @@
-import { test, type TestOptions } from "bun:test"
+import { test, type TestOptions } from "@opencode-ai/nub-test"
 import { Effect, type Layer } from "effect"
 import { testEffect } from "./lib/effect"
 import { cassetteName, classifiedTags, matchesSelected, missingEnv, unique } from "./recorded-utils"

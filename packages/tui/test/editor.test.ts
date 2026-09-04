@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, test } from "@opencode-ai/nub-test"
 import { normalizePromptContent, openEditor } from "../src/editor"
 
 const editor = process.env.EDITOR

@@ -40,7 +40,8 @@
     "@typescript/native-preview": "catalog:",
     "@webgpu/types": "0.1.54",
     "typescript": "catalog:",
-    "wrangler": "4.50.0"
+    "wrangler": "4.50.0",
+    "@opencode-ai/nub-test": "workspace:*"
   },
   "engines": {
     "node": ">=22"

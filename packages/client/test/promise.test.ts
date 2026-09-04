@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { isSessionNotFoundError, isUnauthorizedError, OpenCode } from "../src"
 
 test("exposes every standard HTTP API group", () => {

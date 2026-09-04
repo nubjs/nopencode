@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { LegacyEvent } from "../src/legacy-event"
 import { PermissionV1 } from "../src/permission-v1"
 import { QuestionV1 } from "../src/question-v1"

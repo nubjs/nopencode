@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { createStore } from "solid-js/store"
 import type { PromptInputV2PersistedState } from "./types"
 import { createPromptInputV2Store } from "./store"

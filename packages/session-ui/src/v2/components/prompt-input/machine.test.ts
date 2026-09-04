@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import type { PromptInputV2PersistedState, PromptInputV2Suggestion } from "./types"
 import { createPromptInputV2InteractionState, transitionPromptInputV2 } from "./machine"
 

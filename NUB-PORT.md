@@ -6,7 +6,7 @@ The branch carries only hand-written source. The Solid JSX transform is a **buil
 
 ## Status
 
-Builds and runs on **darwin-arm64**, **linux-x64**, **linux-arm64**, **linux-arm64-musl** and **win32-x64**, TUI included, in both the default embed shape and `--smol`.
+Builds and runs on **darwin-arm64**, **darwin-x64**, **linux-x64**, **linux-arm64**, **linux-arm64-musl** and **win32-x64**, with the TUI rendering on every one. That is the embed shape; `--smol` is verified with its TUI on darwin-x64 and linux-arm64, and the other four are untried in that shape rather than known good.
 
 Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`, and separately with this source tree moved away entirely:
 
@@ -17,9 +17,10 @@ Verified from a foreign working directory, with the runtime cache cleared and a 
 | Backend | `serve` listens, `/doc` and `/session` return 200, a POSTed session persists and reads back stamped `"version":"0.0.0-nub"` |
 | linux-x64 | cross-compiled from macOS, run in `debian:bookworm-slim` with **no Node on the machine** — needs `libatomic1`, see below |
 | linux-arm64 | cross-compiled from macOS, run in `debian:bookworm-slim` at native speed under Docker on the arm64 host, again with no Node on the machine — needs `libatomic1` too |
+| darwin-x64 | cross-compiled from arm64 macOS, run under Rosetta — commands correct straight away, TUI correct once the binary used its own Node rather than the host's (see below) |
 | linux-arm64-musl | cross-compiled from macOS, run in `alpine:3.20` under Docker at native arm64 speed with no Node — needs `libgcc` rather than `libatomic1` |
 | win32-x64 | cross-compiled from macOS, run on native AMD64 Windows Server 2022 — every command matches, TUI renders. ~4 s warm startup there, see below |
-| `--smol` | 21.8 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after |
+| `--smol` | 21.6 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after. Needs `curl` or `wget` on the box — a slim image has neither, and nub says so rather than failing obscurely |
 | A model response | **not verified.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`). |
 
 ### Measured against the Bun build
@@ -54,6 +55,24 @@ Two caveats worth carrying:
 - **The launcher was linked with `x86_64-pc-windows-gnu`**, because that is what `cargo-zigbuild` can produce from macOS. The release pipeline uses `x86_64-pc-windows-msvc`. It worked, but a gnu-linked launcher is a different CRT and should not be assumed equivalent for shipping.
 
 The Ctrl-C console guard in `terminal-win32.ts` now goes through `node:ffi`. Its kernel32 calls were exercised on a clean Windows Server 2022 box from a `nub compile` binary cross-built on macOS: `dlopen("kernel32.dll")`, `GetConsoleMode` on the console input handle (`0x1f7`), `SetConsoleMode` clearing `ENABLE_PROCESSED_INPUT` (`0x1f6`), restore, and `FlushConsoleInputBuffer` all returned success. The guard inside the TUI itself was not driven interactively there — an SSH session has no TTY stdin, so the guard's own early return takes over. Two things that box also showed: the v0.8.3 launcher imports `VCRUNTIME140.dll` and dies with `STATUS_DLL_NOT_FOUND` on a machine without the VC++ redistributable (nub `main` already links the CRT statically), and a launcher older than the `nub` that compiled the payload refuses it (`compiled payload format version 3 is unsupported`).
+
+## Suggestion: `--target 26` means a different Node in each shape
+
+The bare major resolves to **26.6.0** when the Node is embedded and **26.0.0** under `--smol`. Same flag, same command line, two runtimes six patch releases apart.
+
+That is enough to break an app silently. On 26.0.0 this TUI cannot bring up OpenTUI's native backend and dies with `OpenTUI native FFI is not available for this runtime yet`; on 26.6.0 it renders. Nothing in the build output suggests the two shapes differ — each prints the version it chose, but only side by side does the mismatch show. Pinning `--target 26.6.0` makes `--smol` work, which is what `script/build-nub.mjs` now does by default.
+
+A major-only target reasonably means "the newest 26 you can get". Whatever the rule is, both shapes should apply the same one, since the shape flag is about where the runtime comes from and not which runtime it is.
+
+## Suggestion: an embed binary adopts a host Node of the wrong architecture
+
+Found by running the darwin-x64 build on an arm64 Mac under Rosetta, which is not an exotic setup — an x64 build is the fallback download, and Apple Silicon users run one whenever a native arm64 build is unavailable.
+
+The TUI died with `Missing OpenTUI asset "@opentui/core-darwin-arm64/libopentui.dylib"` — the **arm64** package — from an x86_64 binary that had staged the x64 one. The binary's own commands worked, so the mismatch only surfaced where a platform-specific file had to be found.
+
+The cause is that the embed shape prefers a Node already on the machine over extracting its own, and here the host Node was arm64 while the launcher process was x86_64. `process.arch` then reported `arm64`, so every path the app computes from it named a package the binary never shipped. Confirmed by control: with `env -i` and no Node on `PATH`, the same binary extracted its own Node — verified `Mach-O 64-bit executable x86_64` — and the TUI rendered correctly.
+
+Adopting a host Node is a good optimisation, and skipping a ~100 MB extraction is worth real effort. The suggestion is only that the adopted Node has to match the triple the binary was **built** for, not merely the machine it landed on. Otherwise `process.arch` and `process.platform` disagree with the build, and every asset, native addon and platform-conditional path an app derives from them points somewhere that does not exist. An app hitting this sees a missing-file error naming a package it never depended on, which is a hard failure to trace back to the launcher.
 
 ## Suggestion: the warm-start check is O(payload), and it dominates startup
 
@@ -250,3 +269,40 @@ Consequence: the TUI runs, and third-party TUI plugins that import the Solid/Ope
 A compiled binary already runs Node with `--experimental-ffi` (nub injects it on 26.1+, with `--disable-warning=ExperimentalWarning`), so `node:ffi` needs nothing from this build — verified by printing `process.execArgv` from a binary compiled with no `--node-options`. `@opentui/core`'s own `node:ffi` backend gets the flag the same way.
 
 `--node-options` is the `compile.execArgv` equivalent for anything else. `--use-system-ca`, which the Bun build bakes in, is not passed yet; Node has the flag since v23.8.
+
+## Running the test suite on stock Node
+
+The suite is written against `bun:test`. `packages/nub-test` runs it on stock Node instead, so the same tests check both runtimes. The Bun path is preserved by a `bun` export condition, which means `bun test` still runs Bun's own runner and stays a usable control — without that, rewriting the imports silently replaces the baseline you are comparing against.
+
+| package | Bun | node:test |
+| --- | --- | --- |
+| `core` | 1080 / 0 | 901 / 39 |
+| `llm` | 298 / 0 | 298 / 0 |
+| `codemode` | 263 / 0 | 263 / 0 |
+| `tui` | 168 / 5 | 190 / 2 |
+| `session-ui` | 76 / 0 | 76 / 0 |
+| `desktop` | 70 / 1 | 70 / 1 |
+| `console` | 19 / 2 | 16 / 3 |
+| `client` | 16 / 0 | 15 / 1 |
+| `schema` | 13 / 2 | 13 / 2 |
+
+`tui` needs three flags and one env var:
+
+```sh
+NUB_TEST_SOLID=1 OTUI_ASSET_ROOT=<repo>/packages/opencode/otui-assets \
+  node --experimental-ffi --experimental-test-module-mocks \
+       --import ../nub-test/hooks.ts --test --test-force-exit 'test/**/*.test.tsx'
+```
+
+`--experimental-ffi` is what OpenTUI's native backend needs; without it every renderer test fails with "OpenTUI native FFI is not available for this runtime yet". `--test-force-exit` is needed because one file leaks a handle and Node otherwise waits on it forever — Bun exits regardless.
+
+What the shim has to bridge, beyond renaming `beforeAll` to `before`:
+
+- **Extensionless and NodeNext imports.** Bun resolves `./agent` to `./agent.ts`, and `./plugin.js` to `plugin.ts`. Node does neither.
+- **Non-erasable TypeScript.** Node strips types but refuses parameter properties and enums, so the load hook compiles with esbuild.
+- **Symlink canonicalisation.** Node keys its module cache on the resolved URL, so two spellings of one file are two modules. Under the workspace store one driver was instantiated 252 times and the resolver never terminated.
+- **SolidJS JSX**, which is a compile-to-renderer-ops pass rather than a `jsx()` factory rewrite — no esbuild setting produces it.
+- **`solid-js` resolving to its SSR build.** Both runtimes resolve it identically; OpenTUI's Bun plugin swaps in the client build, and the shim redirects to it in `resolve` so app code and the renderer share one module instance.
+- **Bun's own APIs** — the `Bun` global, `bun:sqlite`, the `$` shell, `with { type: "file" }` assets, and snapshots read from Bun's committed `.snap` files.
+
+Anything not implemented throws. A silently missing API turns a real assertion into a passing no-op, which is the one failure mode a migration like this must not have.

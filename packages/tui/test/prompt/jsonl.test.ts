@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { MAX_FRECENCY_ENTRIES, parseFrecency } from "../../src/prompt/frecency"
 import { MAX_STASH_ENTRIES, parsePromptStash } from "../../src/prompt/stash"
 

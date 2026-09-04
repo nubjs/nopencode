@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { createDialogSessionListQuery, loadDialogSessionList } from "../../src/component/dialog-session-list"
 
 describe("dialog session list", () => {

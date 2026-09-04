@@ -2,7 +2,7 @@
 import { createDefaultOpenTuiKeymap } from "@opentui/keymap/opentui"
 import { createBindingLookup } from "@opentui/keymap/extras"
 import { testRender, useRenderer } from "@opentui/solid"
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { onCleanup } from "solid-js"
 import { TuiKeybind } from "../src/config/keybind"
 import { getOpencodeModeStack, OPENCODE_BASE_MODE, OpencodeKeymapProvider, registerOpencodeKeymap } from "../src/keymap"

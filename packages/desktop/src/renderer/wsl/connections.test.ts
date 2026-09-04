@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import type { WslServersState } from "@opencode-ai/app/wsl/types"
 import { availableStartupServer, readyWslConnections } from "./connections"
 

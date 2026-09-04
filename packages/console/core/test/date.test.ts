@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { getWeekBounds, getMonthlyBounds } from "../src/util/date"
 
 describe("util.date.getWeekBounds", () => {

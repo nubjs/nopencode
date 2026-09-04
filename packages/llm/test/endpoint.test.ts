@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { LLM } from "../src"
 import * as OpenAIChat from "../src/protocols/openai-chat"
 import { Endpoint } from "../src/route"

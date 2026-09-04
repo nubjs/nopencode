@@ -4,7 +4,13 @@ import { fileURLToPath } from "url"
 // @ts-expect-error npm does not publish types for this internal config API.
 import Config from "@npmcli/config"
 // @ts-expect-error npm does not publish types for this internal config API.
-import { definitions, flatten, nerfDarts, shorthands } from "@npmcli/config/lib/definitions/index.js"
+import npmDefinitions from "@npmcli/config/lib/definitions/index.js"
+// Destructured from the default rather than named-imported: the module assigns
+// `module.exports = { definitions, flatten, ... }` with shorthand properties, and
+// node's cjs-module-lexer sees only `default` and `defaults` — so a named import
+// fails under node while working under Bun. The default is the whole exports
+// object either way, so this form is correct on both.
+const { definitions, flatten, nerfDarts, shorthands } = npmDefinitions
 import { Effect } from "effect"
 
 const npmPath = fileURLToPath(new URL("..", import.meta.url))

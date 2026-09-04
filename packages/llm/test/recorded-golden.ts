@@ -1,5 +1,5 @@
 import type { HttpRecorder } from "@opencode-ai/http-recorder"
-import { describe } from "bun:test"
+import { describe } from "@opencode-ai/nub-test"
 import { Effect } from "effect"
 import type { Model } from "../src"
 import { goldenScenarioTags, goldenScenarioTitle, runGoldenScenario, type GoldenScenarioID } from "./recorded-scenarios"
