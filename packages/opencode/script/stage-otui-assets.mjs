@@ -27,20 +27,41 @@ const repo = path.resolve(dir, "../..")
  * an `exports` map with no `./package.json` entry, so the resolver refuses the
  * one path that would tell us where they live. Their layout is not in question
  * — walk to it.
+ *
+ * The walk has to be layout-agnostic because the platform packages are
+ * optionalDependencies of `@opentui/core` that nothing in this repo links
+ * directly, and every package manager parks those somewhere different:
+ *
+ *   npm      node_modules/@opentui/core-darwin-arm64          (hoisted)
+ *   bun      node_modules/.bun/<pkg>@<hash>/node_modules/...  (isolated store)
+ *   nub/pnpm node_modules/.store/<pkg>@<hash>/node_modules/... (isolated store)
+ *
+ * Rather than enumerate store names, resolve `@opentui/core` — which IS linked —
+ * and walk up from its real path collecting every `node_modules` ancestor. In an
+ * isolated store the platform package is a SIBLING inside the same private
+ * node_modules, which no amount of looking *inside* the package will find.
  */
 export function packageDir(name) {
-  const seen = []
-  const bases = [path.join(dir, "node_modules"), path.join(repo, "node_modules")]
+  const roots = [path.join(dir, "node_modules"), path.join(repo, "node_modules")]
+
   const core = path.join(dir, "node_modules/@opentui/core")
-  if (existsSync(core)) bases.splice(1, 0, path.join(realpathSync(core), "node_modules"))
-  for (const base of bases) {
-    const candidate = path.join(base, name)
-    seen.push(candidate)
+  if (existsSync(core)) {
+    let cursor = realpathSync(core)
+    while (cursor !== path.dirname(cursor)) {
+      if (path.basename(cursor) === "node_modules") roots.push(cursor)
+      cursor = path.dirname(cursor)
+    }
+  }
+
+  for (const root of roots) {
+    const candidate = path.join(root, name)
     if (existsSync(path.join(candidate, "package.json"))) return realpathSync(candidate)
   }
-  // bun's isolated store, for a package nothing links directly.
-  const store = path.join(repo, "node_modules/.bun")
-  if (existsSync(store)) {
+
+  // A package nothing links and that no walk reaches: scan the store directly.
+  // Both stores name their entries `<flat-name>@<version>`, so one scan serves.
+  for (const store of [path.join(repo, "node_modules/.bun"), path.join(repo, "node_modules/.store")]) {
+    if (!existsSync(store)) continue
     const flat = name.replace("/", "+")
     for (const entry of readdirSync(store)) {
       if (entry !== flat && !entry.startsWith(`${flat}@`)) continue
@@ -48,7 +69,8 @@ export function packageDir(name) {
       if (existsSync(path.join(candidate, "package.json"))) return realpathSync(candidate)
     }
   }
-  throw new Error(`cannot locate ${name}; looked in:\n  ${seen.join("\n  ")}\n  ${store}/*`)
+
+  throw new Error(`cannot locate ${name}; looked under:\n  ${roots.join("\n  ")}`)
 }
 
 const NATIVE_FILE = { darwin: "libopentui.dylib", linux: "libopentui.so", win32: "opentui.dll" }
