@@ -10,18 +10,20 @@
     "build": "vite build",
     "build:cloudflare": "OPENCODE_DEPLOYMENT_TARGET=cloudflare vite build",
     "start": "vite start",
-    "shell-prod": "sst shell --target Teams --stage production"
+    "shell-prod": "sst shell --target Teams --stage production",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'test/**/*.test.ts'"
   },
   "dependencies": {
+    "@hono/standard-validator": "catalog:",
     "@opencode-ai/core": "workspace:*",
     "@opencode-ai/session-ui": "workspace:*",
     "@opencode-ai/ui": "workspace:*",
-    "aws4fetch": "^1.0.20",
     "@pierre/diffs": "catalog:",
+    "@solidjs/meta": "catalog:",
     "@solidjs/router": "catalog:",
     "@solidjs/start": "catalog:",
-    "@solidjs/meta": "catalog:",
-    "@hono/standard-validator": "catalog:",
+    "@standard-community/standard-openapi": "0.2.9",
+    "aws4fetch": "^1.0.20",
     "hono": "catalog:",
     "hono-openapi": "catalog:",
     "js-base64": "3.7.7",
@@ -38,7 +40,8 @@
     "@types/luxon": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "@opencode-ai/nub-test": "workspace:*"
   },
   "engines": {
     "node": ">=22"
