@@ -43,12 +43,17 @@ import { $ as bunShell } from "./bun-module.ts"
  * behaviour rather than loosening anything.
  */
 const platformFetch = globalThis.fetch
-globalThis.fetch = function (input: any, init?: any) {
+const patchedFetch = function (input: any, init?: any) {
   if (init?.body instanceof ReadableStream && init.duplex === undefined) {
     init = { ...init, duplex: "half" }
   }
   return platformFetch(input, init)
-} as typeof globalThis.fetch
+}
+// Bun's `typeof fetch` carries `preconnect`, and a test that stubs fetch
+// preserves it with `realFetch.preconnect.bind(realFetch)` — which reads
+// `undefined.bind` on node. It warms a connection, so doing nothing is a
+// correct answer; being absent is not.
+globalThis.fetch = Object.assign(patchedFetch, { preconnect: (_url?: unknown) => {} }) as typeof globalThis.fetch
 
 /**
  * `Bun.spawn` on `node:child_process`, in Bun's Subprocess shape.
