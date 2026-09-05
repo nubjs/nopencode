@@ -131,9 +131,9 @@ export NUB="$NUB_TARGET/nub"
 ### 2. This tree
 
 ```sh
-git clone git@github.com:nubjs/opencode.git && cd opencode
+git clone git@github.com:nubjs/nopencode.git && cd nopencode
 git checkout nub-compile
-bun install                       # nub install also works; see the note below
+nub install                       # bun install also works
 
 cd packages/opencode
 curl -sSL https://models.dev/api.json -o /tmp/oc-models.json
@@ -150,7 +150,7 @@ git -C ../.. diff --name-only | grep -E '\.(tsx|jsx)$' | tr '\n' '\0' \
 
 The Solid transform rewrites `.tsx` in place, exactly as the Bun build's `onLoad` plugin rewrites it in memory. Its output is never committed — undo it after building, or build in a throwaway checkout.
 
-`OPENCODE_MODELS_JSON`, `OUT` and `NO_MINIFY=1` are honoured by `script/build-nub.mjs`.
+`OPENCODE_MODELS_JSON`, `OUT` and `NO_MINIFY=1` are honoured by `script/build-nub.mjs`. It resolves packages by walking the workspace's own `node_modules` rather than reading a store path, so it builds the same from a `bun install` tree, a `nub install` tree or an npm one.
 
 ### 3. Run it
 
@@ -162,7 +162,21 @@ The Solid transform rewrites `.tsx` in place, exactly as the Bun build's `onLoad
 
 The binary is self-contained — no Node, no `node_modules`, nothing to install. On first run it unpacks itself under `${XDG_CACHE_HOME:-$HOME/.cache}/nub/compile-app/<hash>`, which takes a second or two; later runs are immediate. That cache grows by one full extraction per rebuild and nothing evicts it, so `rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/nub/compile-app"` when it gets large.
 
-Installing dependencies with `nub install` instead of `bun install` needs two `patchedDependencies` entries in the root `package.json` corrected first — `@ff-labs/fff-bun@0.9.3` and `@standard-community/standard-openapi@0.2.9` are pinned to versions no longer resolved, which nub refuses and bun tolerates.
+### Installing with nub
+
+`nub install` completes, applies all 16 patches, and produces a tree the build compiles from. Getting there took four fixes, and three of them were defects in this repo that bun's leniency had been hiding rather than anything nub lacked.
+
+| What refused | Why | Fix |
+| --- | --- | --- |
+| `File '@tsconfig/bun/tsconfig.json' not found` | nub reads the project's tsconfig before installing, and an `extends` that points into `node_modules` cannot resolve before the first install has run | `tsconfig.base.json` in the repo, extended by relative path |
+| `ERR_NUB_UNUSED_PATCH: @ff-labs/fff-bun@0.9.3` | the dependency is declared at 0.9.4, so the patch key stopped matching. bun ships it **unpatched** and says nothing — verified in the install tree: `createRequire` still present, the patch's `FFF_LIBC` absent | re-keyed to 0.9.4, where the patched region is byte-identical |
+| `ERR_NUB_UNUSED_PATCH: @standard-community/standard-openapi@0.2.9` | a non-optional peer of `hono-openapi` that bun auto-installs and nub does not, so the patch matched no installed package | declared explicitly beside `hono-openapi` |
+| `failed to apply patch … could not apply hunk 10` for `@silvia-odwyer/photon-node@0.3.4` | the last hunk's three context lines each carried one extra leading space, describing content the file does not have. `git apply --check` rejects it too; bun trims and applies it anyway | context corrected. The patched file is byte-identical to the copy bun produces |
+
+Two differences between the two package managers are worth carrying rather than fixing:
+
+- **nub does not auto-install non-optional peer dependencies; bun does.** Both `@standard-community/standard-openapi` and `ioredis` reached the graph only that way. The first is genuinely used, so it is now declared; the second is reached only through `@effect/platform-node`'s `NodeRedis.js`, which nothing here imports, so the build passes `--external ioredis` rather than installing a redis client into the binary.
+- **Native build scripts need a modern `node-gyp` on `PATH`.** `tree-sitter-powershell` fails under node-gyp 3.8.0, which is Python-2 only. Both package managers fail identically on a machine carrying an old global copy, so this is not a nub difference.
 
 ### Cross-compiling
 

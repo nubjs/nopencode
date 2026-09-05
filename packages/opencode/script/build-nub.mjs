@@ -69,6 +69,15 @@ const args = [
   "--external",
   "node-gyp",
 
+  // `@effect/platform-node` declares ioredis as a non-optional peer and reaches
+  // it from `NodeRedis.js`, which nothing in opencode imports. bun installs that
+  // peer automatically and nub does not, so the bundle resolved on one tree and
+  // failed on the other. Leaving it external makes the build independent of
+  // that difference, and keeps a redis client out of a binary nobody drives one
+  // from; the module's own guard reports it missing if anything ever does.
+  "--external",
+  "ioredis",
+
   // solid-js maps the `node` condition to its SSR build (dist/server.js), which
   // has no reactive runtime. Bun's build patches this in the plugin's onLoad;
   // here the two entry points are aliased to the client builds directly. Doing
