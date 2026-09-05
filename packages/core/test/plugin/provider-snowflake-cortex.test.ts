@@ -43,8 +43,8 @@ function withEnv<A, E, R>(vars: Record<string, string | undefined>, effect: () =
 describe("SnowflakeCortexPlugin", () => {
   it.effect("is registered in ProviderPlugins before OpenAICompatiblePlugin", () =>
     Effect.sync(() => {
-      expect(ProviderPlugins.map((item) => item.id)).toContain(PluginV2.ID.make("snowflake-cortex"))
-      const ids = ProviderPlugins.map((p) => p.id)
+      expect(ProviderPlugins().map((item) => item.id)).toContain(PluginV2.ID.make("snowflake-cortex"))
+      const ids = ProviderPlugins().map((p) => p.id)
       expect(ids.indexOf("snowflake-cortex")).toBeLessThan(ids.indexOf("openai-compatible"))
     }),
   )

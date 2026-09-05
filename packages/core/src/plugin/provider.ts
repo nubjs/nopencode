@@ -33,7 +33,18 @@ import { ZenmuxPlugin } from "./provider/zenmux"
 import type { PluginInternal } from "./internal"
 import type { Scope } from "effect"
 
-export const ProviderPlugins: PluginInternal.Plugin<PluginInternal.Requirements | Scope.Scope>[] = [
+/**
+ * Built on demand, not at module scope.
+ *
+ * This module and every plugin it lists sit in a cycle: a plugin imports
+ * `define` from `./internal`, and `./internal` imports this list back. Building
+ * the array eagerly means that when a plugin module is the one that ENTERS the
+ * cycle — which is what a test importing `./provider/anthropic` does — this file
+ * evaluates while that plugin is still initialising, and reading its binding
+ * throws "Cannot access 'AnthropicPlugin' before initialization". Deferring the
+ * read to first use puts it after every module has finished.
+ */
+export const ProviderPlugins = (): PluginInternal.Plugin<PluginInternal.Requirements | Scope.Scope>[] => [
   AlibabaPlugin,
   AmazonBedrockPlugin,
   AnthropicPlugin,
