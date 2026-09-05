@@ -17,6 +17,7 @@
  */
 import { spawn as nodeSpawn, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
+import { Readable } from "node:stream"
 import { createServer } from "node:http"
 import { globSync, mkdirSync, existsSync } from "node:fs"
 import { readFile, writeFile } from "node:fs/promises"
@@ -40,6 +41,54 @@ globalThis.fetch = function (input: any, init?: any) {
   }
   return platformFetch(input, init)
 } as typeof globalThis.fetch
+
+/**
+ * `Bun.spawn` on `node:child_process`, in Bun's Subprocess shape.
+ *
+ * The CLI tests drive a real opencode subprocess and read it the Bun way:
+ * `new Response(proc.stdout).text()`, `await proc.exited`, `proc.stdin.write(…)`.
+ * Node spells every one of those differently — a Readable rather than a web
+ * stream, an `exit` event rather than a promise, and one `stdio` array rather
+ * than three named handles — so a thin passthrough leaves them all undefined
+ * and the suite fails on a property access rather than on anything it tests.
+ */
+function bunSpawn(cmd: string[] | { cmd: string[] }, opts: any = {}) {
+  const argv = Array.isArray(cmd) ? cmd : cmd.cmd
+  const mode = (value: unknown) => (value === "ignore" || value === "inherit" ? value : "pipe")
+  const child = nodeSpawn(argv[0]!, argv.slice(1), {
+    cwd: opts.cwd,
+    env: opts.env,
+    stdio: [mode(opts.stdin), mode(opts.stdout), mode(opts.stderr)],
+  })
+  return {
+    get pid() {
+      return child.pid
+    },
+    get exitCode() {
+      return child.exitCode
+    },
+    // A signal counts as an exit here, as it does in Bun: the callers await this
+    // after killing the child and would otherwise hang on a promise that never
+    // settles.
+    exited: new Promise<number>((resolve) => {
+      child.on("exit", (code, signal) => resolve(code ?? (signal ? 128 : 0)))
+      child.on("error", () => resolve(-1))
+    }),
+    stdout: child.stdout ? Readable.toWeb(child.stdout) : undefined,
+    stderr: child.stderr ? Readable.toWeb(child.stderr) : undefined,
+    stdin: child.stdin
+      ? {
+          write: (chunk: string | Uint8Array) => {
+            child.stdin!.write(chunk)
+            return chunk.length
+          },
+          end: () => child.stdin!.end(),
+          flush: () => {},
+        }
+      : undefined,
+    kill: (signal?: NodeJS.Signals | number) => child.kill(signal ?? "SIGTERM"),
+  }
+}
 
 type FileLike = string | { path: string }
 const pathOf = (target: FileLike) => (typeof target === "string" ? target : target.path)
@@ -123,10 +172,7 @@ const BunShim = {
     const first = r.stdout?.split("\n")[0]?.trim()
     return first ? resolvePath(first) : null
   },
-  spawn: (cmd: string[] | { cmd: string[] }, opts?: any) => {
-    const argv = Array.isArray(cmd) ? cmd : cmd.cmd
-    return nodeSpawn(argv[0]!, argv.slice(1), opts ?? {})
-  },
+  spawn: bunSpawn,
   readableStreamToText: async (stream: ReadableStream) => new Response(stream).text(),
   /**
    * `Bun.gc(true)` forces a synchronous collection. Node only exposes `global.gc`

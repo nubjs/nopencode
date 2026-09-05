@@ -26,12 +26,29 @@ import { Deferred, Duration, Effect, Layer, Queue, Schedule, Scope, Stream } fro
 import { FetchHttpClient, HttpClient } from "effect/unstable/http"
 import { ChildProcess } from "effect/unstable/process"
 import path from "node:path"
+import { fileURLToPath } from "node:url"
 import { TestLLMServer } from "./llm-server"
 import { testProviderConfig } from "./test-provider"
 import { it } from "./effect"
 
 const opencodeRoot = path.resolve(import.meta.dir, "../../")
 const cliEntry = path.join(opencodeRoot, "src/index.ts")
+
+// The CLI subprocess runs on the SAME Node as the tests, loaded through the same
+// resolver hooks. Neither plain node nor `nub <file>` can run this source on its
+// own: it uses Bun-style directory and extensionless imports, so the first thing
+// either reports is `ERR_UNSUPPORTED_DIR_IMPORT` on an `index.ts` sibling. Only
+// the compiled binary escapes that, because its bundler resolves the graph ahead
+// of time.
+const cliCommand = [
+  process.execPath,
+  "--import",
+  fileURLToPath(import.meta.resolve("@opencode-ai/nub-test/hooks")),
+  "--experimental-ffi",
+  "--disable-warning=ExperimentalWarning",
+  "--conditions=browser",
+  cliEntry,
+]
 
 export const testModelID = "test/test-model"
 
@@ -211,7 +228,7 @@ export function withCliFixture<A, E>(
       // on `Bun.stdin.text()` (see src/cli/cmd/run.ts — non-TTY stdin is
       // consumed as the prompt). The old Process.run wrapper defaulted to
       // ignore; ChildProcess.make defaults to pipe, so we set it explicitly.
-      const command = ChildProcess.make("bun", ["run", "--conditions=browser", cliEntry, ...args], {
+      const command = ChildProcess.make(cliCommand[0]!, [...cliCommand.slice(1), ...args], {
         cwd: home,
         env: { ...env, ...opts?.env },
         extendEnv: true,
@@ -283,7 +300,7 @@ export function withCliFixture<A, E>(
       const options = runOpts(opts)
       const proc = yield* Effect.acquireRelease(
         Effect.sync(() =>
-          Bun.spawn(["bun", "run", "--conditions=browser", cliEntry, ...runArgs(message, opts)], {
+          Bun.spawn([...cliCommand, ...runArgs(message, opts)], {
             cwd: home,
             env: { ...process.env, ...env, ...options?.env },
             stdin: "ignore",
@@ -324,7 +341,7 @@ export function withCliFixture<A, E>(
       // as a finalizer error during test teardown.
       const proc = yield* Effect.acquireRelease(
         Effect.sync(() =>
-          Bun.spawn(["bun", "run", "--conditions=browser", cliEntry, ...argv], {
+          Bun.spawn([...cliCommand, ...argv], {
             cwd: home,
             env: { ...process.env, ...env, ...opts?.env },
             stdout: "pipe",
@@ -395,7 +412,7 @@ export function withCliFixture<A, E>(
       // Either way we await proc.exited so the test scope doesn't leak.
       const proc = yield* Effect.acquireRelease(
         Effect.sync(() =>
-          Bun.spawn(["bun", "run", "--conditions=browser", cliEntry, ...argv], {
+          Bun.spawn([...cliCommand, ...argv], {
             cwd: opts?.cwd ?? home,
             env: { ...process.env, ...env, ...opts?.env },
             stdin: "pipe",
