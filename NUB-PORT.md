@@ -294,12 +294,12 @@ Every package, on one machine, measured the same way on both sides: Bun at the c
 
 | package | Bun | Node |
 | --- | --- | --- |
-| opencode | 3184 / 5 / 17 skipped | 2980 / 145 / 17 skipped |
-| core | 1080 / 0 | 938 / 114 |
+| opencode | 3184 / 5 / 17 skipped | 3095 / 105 / 17 skipped |
+| core | 1080 / 0 | 1066 / 8 |
 | app (test:unit) | 693 / 1 | 684 / 2 |
 | llm | 298 / 0 / 30 skipped | 298 / 0 / 30 skipped |
 | codemode | 263 / 0 | 263 / 0 |
-| tui | 168 / 5 / 1 skipped | 189 / 2 / 1 skipped |
+| tui | 168 / 5 / 1 skipped | 187 / 3 / 1 skipped |
 | session-ui | 76 / 0 | 76 / 0 |
 | desktop | 70 / 1 | 70 / 1 |
 | httpapi-codegen | 66 / 0 | 65 / 1 |
@@ -307,21 +307,21 @@ Every package, on one machine, measured the same way on both sides: Bun at the c
 | http-recorder | 33 / 0 | 33 / 0 |
 | enterprise | 1 / 17 | 0 / 17 |
 | client | 15 / 1 | 15 / 1 |
-| console-core | 14 / 0 | 14 / 0 |
 | schema | 13 / 2 | 13 / 2 |
+| console-core | 14 / 0 | 14 / 0 |
 | ui | 9 / 0 | 9 / 0 |
+| console-app | 5 / 2 | 5 / 2 |
 | effect-drizzle-sqlite | 7 / 0 | 7 / 0 |
 | stats-core | 7 / 0 | 7 / 0 |
-| console-app | 5 / 2 | 5 / 2 |
+| sdk-next | 1 / 4 | 1 / 4 |
 | cli | 3 / 0 | 3 / 0 |
 | protocol | 2 / 0 | 2 / 0 |
-| sdk-next | 1 / 4 | 1 / 4 |
 | sdk | 1 / 0 | 1 / 0 |
-| **total** | **6050 / 38 / 48 skipped** | **5714 / 291 / 48 skipped** |
+| **total** | **6050 / 38 / 48 skipped** | **5955 / 146 / 48 skipped** |
 
 Read the Bun column as the target rather than as a pass mark: 38 of its own tests fail, and `cli`, `enterprise`, `protocol` and `stats-core` had no `test` script at all before this branch, so their files were unrunnable rather than passing. `tui` is the one package ahead of Bun.
 
-Seventeen of the twenty-three rows match Bun exactly. The remaining gap is concentrated in two packages and traces to four named things, not a long tail:
+Seventeen of the twenty-three rows match Bun exactly and one is ahead of it. The gap is concentrated in `opencode` and `core`:
 
 - **`core/test/session-runner.test.ts`** — the largest single cluster, and unexplained. It is not the `#sqlite` condition (`bun test --conditions=node` runs the file 83/83) and not `node:test` itself (a runner-free driver fails it under Bun too, where `bun test` passes it). Both of those were plausible and both are wrong; the cause is still open.
 - **`spyOn` on a module namespace.** `export * as TuiConfig from "./tui"` yields a namespace object whose properties are non-configurable by specification, so Node throws `Cannot redefine property` where Bun relaxes the rule for mocking. No shim can bridge that — only rewriting those tests onto `mock.module` would.
