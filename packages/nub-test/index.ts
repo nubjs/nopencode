@@ -269,7 +269,12 @@ function each(rows: readonly any[]) {
       const args = Array.isArray(row) ? row : [row]
       let i = 0
       const title = name.replace(/%[sdifj%]/g, (m) => (m === "%%" ? "%" : String(args[i++])))
-      ;(it as any)(title === name ? `${name} (${JSON.stringify(row)})` : title, () => fn(...args))
+      // Through `runner`, not `it` directly: `runner` is what wraps the body in
+      // `named()`, and without that a snapshot taken inside a row keys on
+      // whatever test ran last. The row suffix is a deviation from Bun, which
+      // leaves every row sharing one name — it is here so a failure names the
+      // row, and it is safe only while no `.each` table also snapshots.
+      runner(title === name ? `${name} (${JSON.stringify(row)})` : title, () => fn(...args))
     }
   }
 }

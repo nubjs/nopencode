@@ -327,6 +327,7 @@ Seventeen of the twenty-three rows match Bun exactly. The remaining gap is conce
 - **`spyOn` on a module namespace.** `export * as TuiConfig from "./tui"` yields a namespace object whose properties are non-configurable by specification, so Node throws `Cannot redefine property` where Bun relaxes the rule for mocking. No shim can bridge that — only rewriting those tests onto `mock.module` would.
 - **A partial `mock.module` factory**, described above.
 - **`packages/enterprise`**, which fails on both runners.
+- **`import-boundaries.test.ts`** in `packages/client` and `packages/sdk-next` spawns `[process.execPath, "build", …]`, which is `bun build` under Bun and `node build` here. Both packages fail the same number of tests on both runners, so the totals line up, but under Node those failures are the spawn rather than the boundary the test is about.
 
 Three flags every script carries:
 

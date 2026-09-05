@@ -160,8 +160,23 @@ function bunServe(options: { port?: number; fetch: (req: Request) => Response | 
       headers: req.headers as any,
       body: chunks.length ? Buffer.concat(chunks) : undefined,
     })
-    const response = await options.fetch(request)
-    res.writeHead(response.status, Object.fromEntries(response.headers))
+    let response: Response
+    try {
+      response = await options.fetch(request)
+    } catch {
+      // Bun answers 500 when a handler throws. Letting it escape here is an
+      // unhandled rejection instead, so the client hangs on a socket that is
+      // never written and the test times out rather than seeing the status.
+      res.writeHead(500)
+      res.end()
+      return
+    }
+    // `getSetCookie()` rather than the entries map: `Object.fromEntries` keeps
+    // one value per name, so a response setting two cookies arrives with one.
+    const headers: Record<string, string | string[]> = Object.fromEntries(response.headers)
+    const cookies = response.headers.getSetCookie()
+    if (cookies.length > 1) headers["set-cookie"] = cookies
+    res.writeHead(response.status, headers)
     res.end(Buffer.from(await response.arrayBuffer()))
   })
   server.listen(options.port ?? 0)
