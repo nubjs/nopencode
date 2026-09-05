@@ -72,10 +72,16 @@ let snapshotStore: Map<string, string> | undefined
 let currentTestName = ""
 let suitePath: string[] = []
 
-const snapshotKey = () => currentTestName
-const nextSnapshotIndex = () => {
-  const n = (snapshotCounts.get(currentTestName) ?? 0) + 1
-  snapshotCounts.set(currentTestName, n)
+/**
+ * Bun's key is the full test name, then `: <hint>` when the call passed one,
+ * then a counter that restarts per distinct key. A dropped hint does not read as
+ * a missing hint — it reads as a missing SNAPSHOT, since the key it composes
+ * matches nothing in the committed file.
+ */
+const snapshotKey = (hint?: string) => (hint ? `${currentTestName}: ${hint}` : currentTestName)
+const nextSnapshotIndex = (key: string) => {
+  const n = (snapshotCounts.get(key) ?? 0) + 1
+  snapshotCounts.set(key, n)
   return n
 }
 
@@ -118,8 +124,9 @@ const pass = (received: unknown, expected: string, ok: boolean) => ({
 })
 
 jestExpect.extend({
-  toMatchSnapshot(received: unknown) {
-    const key = `${snapshotKey()} ${nextSnapshotIndex()}`
+  toMatchSnapshot(received: unknown, hint?: string) {
+    const base = snapshotKey(hint)
+    const key = `${base} ${nextSnapshotIndex(base)}`
     const store = loadSnapshots()
     const expected = store.get(key)
     if (expected === undefined) {
@@ -269,17 +276,25 @@ function named(fullName: string, fn: any) {
   return function (this: any, ...args: any[]) {
     const previous = currentTestName
     currentTestName = fullName
+    let out: any
     try {
-      const out = fn.apply(this, args)
-      if (out && typeof out.finally === "function") {
-        return out.finally(() => {
-          currentTestName = previous
-        })
-      }
-      return out
-    } finally {
-      if (!fn.constructor || fn.constructor.name !== "AsyncFunction") currentTestName = previous
+      out = fn.apply(this, args)
+    } catch (err) {
+      currentTestName = previous
+      throw err
     }
+    // Restore off the RESULT, not off whether the body was declared `async`.
+    // Sniffing the declaration missed the shape most of this suite uses — a
+    // plain arrow returning an Effect, whose constructor is `Function` — so the
+    // name was cleared synchronously while the test was still running, and
+    // every snapshot it took keyed on an empty name.
+    if (out && typeof out.finally === "function") {
+      return out.finally(() => {
+        currentTestName = previous
+      })
+    }
+    currentTestName = previous
+    return out
   }
 }
 

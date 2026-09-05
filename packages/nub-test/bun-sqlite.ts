@@ -52,6 +52,16 @@ const SQLITE_CODES: Record<number, string> = {
   26: "SQLITE_NOTADB",
 }
 
+/**
+ * Bun takes positional parameters either spread or as ONE array — `run(sql, [a, b])`
+ * and `run(sql, a, b)` mean the same thing. Node takes only the spread form, and
+ * reads a lone array as a named-parameter object, so the array form fails with
+ * "Unknown named parameter '0'" rather than anything that names the real problem.
+ */
+function positional(args: unknown[]): unknown[] {
+  return args.length === 1 && Array.isArray(args[0]) ? args[0] : args
+}
+
 /** Run `fn`, restamping any sqlite error with the mnemonic Bun would have used. */
 function withBunErrorCodes<T>(fn: () => T): T {
   try {
@@ -108,7 +118,7 @@ export class Database extends DatabaseSync {
    * without this the client fails before any query reaches it.
    */
   run(sql: string, ...params: unknown[]) {
-    return this.prepare(sql).run(...params)
+    return this.prepare(sql).run(...positional(params))
   }
 
   exec(sql: string) {
@@ -129,7 +139,7 @@ function wrapStatement(stmt: any) {
   }
   for (const name of ["all", "get", "run", "iterate"] as const) {
     const original = stmt[name].bind(stmt)
-    stmt[name] = (...args: unknown[]) => withBunErrorCodes(() => original(...args))
+    stmt[name] = (...args: unknown[]) => withBunErrorCodes(() => original(...positional(args)))
   }
   // Rows as positional arrays rather than objects. Node has the same capability
   // as a MODE on the statement, so flip it for the one call and put it back —
@@ -138,7 +148,7 @@ function wrapStatement(stmt: any) {
   stmt.values = function (...args: unknown[]) {
     this.setReturnArrays(true)
     try {
-      return this.all(...args)
+      return this.all(...positional(args))
     } finally {
       this.setReturnArrays(false)
     }
