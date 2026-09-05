@@ -7,7 +7,7 @@
   "private": true,
   "scripts": {
     "typecheck": "tsgo --noEmit",
-    "test": "nub script/stage-otui-assets.mjs && NUB_TEST_SOLID=universal node --import @opencode-ai/nub-test/hooks --import ./test/otui-assets.mjs --test --test-force-exit --test-timeout=30000 --test-reporter=dot --experimental-ffi --experimental-test-module-mocks --experimental-import-meta-resolve --disable-warning=ExperimentalWarning 'test/**/*.test.ts'",
+    "test": "nub script/stage-otui-assets.mjs && NUB_TEST_SOLID=universal node --import @opencode-ai/nub-test/hooks --import ./test/otui-assets.mjs --import ./test/preload.ts --test --test-force-exit --test-timeout=30000 --test-reporter=dot --experimental-ffi --experimental-test-module-mocks --experimental-import-meta-resolve --disable-warning=ExperimentalWarning 'test/**/*.test.ts'",
     "test:httpapi": "nub script/httpapi-exercise.ts --mode coverage --fail-on-missing --fail-on-skip && nub script/httpapi-exercise.ts --mode auth --fail-on-missing --fail-on-skip && nub script/httpapi-exercise.ts --mode effect --fail-on-missing --fail-on-skip",
     "bench:test": "bun run script/bench-test-suite.ts",
     "profile:test": "bun run script/profile-test-files.ts",
