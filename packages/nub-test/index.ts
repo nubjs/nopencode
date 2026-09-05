@@ -203,10 +203,10 @@ export const describe = Object.assign(describeWrapper, {
   skip: (nodeDescribe as any).skip,
   todo: (nodeDescribe as any).todo,
   /**
-   * `node:test` already runs every test in a suite concurrently, so Bun's
-   * `.concurrent` is the default here rather than a mode to switch on. Aliasing
-   * it to the plain form keeps the two call sites that use it honest: they get
-   * concurrency, just not because they asked.
+   * `node:test` runs a suite's subtests in SERIES — measured, not assumed — and
+   * offers concurrency per suite rather than per describe. The two call sites
+   * that ask for it do not depend on it, so this runs them in series and says
+   * so, rather than claiming a concurrency they would not get.
    */
   concurrent: describeWrapper,
   skipIf: (condition: boolean) => (condition ? (nodeDescribe as any).skip : describeWrapper),

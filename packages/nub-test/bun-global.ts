@@ -23,6 +23,24 @@ import { readFile, writeFile } from "node:fs/promises"
 import { dirname, resolve as resolvePath } from "node:path"
 import stringWidthPkg from "string-width"
 
+/**
+ * Node's fetch refuses a ReadableStream body unless the caller also passes
+ * `duplex: "half"`; Bun does not require it. Effect's fetch client sets duplex
+ * only for its own `Stream` body tag, so a `Raw` body that happens to BE a
+ * stream — which is what the server tests send — dies with "RequestInit: duplex
+ * option is required when sending a body" before a byte leaves the process.
+ *
+ * Supplying it is what the fetch standard asks for, so this restores Bun's
+ * behaviour rather than loosening anything.
+ */
+const platformFetch = globalThis.fetch
+globalThis.fetch = function (input: any, init?: any) {
+  if (init?.body instanceof ReadableStream && init.duplex === undefined) {
+    init = { ...init, duplex: "half" }
+  }
+  return platformFetch(input, init)
+} as typeof globalThis.fetch
+
 type FileLike = string | { path: string }
 const pathOf = (target: FileLike) => (typeof target === "string" ? target : target.path)
 
@@ -85,6 +103,12 @@ function bunServe(options: { port?: number; fetch: (req: Request) => Response | 
       return new URL(`http://localhost:${port()}`)
     },
     stop: () => new Promise<void>((r) => server.close(() => r())),
+    // Bun's Server is disposable, and six http-recorder tests write
+    // `using server = Bun.serve(…)`. Without this they fail at the declaration
+    // with "Object not disposable" before asserting anything.
+    [Symbol.dispose]: () => {
+      server.close()
+    },
   }
 }
 
