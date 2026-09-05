@@ -10,6 +10,7 @@
  * TypeScript subset.
  */
 import { DatabaseSync } from "node:sqlite"
+import { existsSync } from "node:fs"
 
 /**
  * SQLite primary result codes, by number.
@@ -86,25 +87,38 @@ function withBunErrorCodes<T>(fn: () => T): T {
  * call fails as a missing method rather than silently doing nothing.
  */
 export class Database extends DatabaseSync {
-  constructor(path?: string, options?: { readonly?: boolean; create?: boolean; strict?: boolean }) {
+  constructor(path?: string, options?: { readonly?: boolean; create?: boolean; readwrite?: boolean; strict?: boolean }) {
     // Passing `undefined` is NOT the same as omitting: node:sqlite throws
     // "The options argument must be an object" when it is present-but-undefined.
-    if (options?.readonly === undefined) super(path ?? ":memory:")
-    else super(path ?? ":memory:", { readOnly: options.readonly })
+    // Two defaults differ from Bun's and both are silent, so they are pinned
+    // here rather than inherited: node opens with `foreign_keys = ON` where Bun
+    // leaves it off, and node creates a missing file where Bun's `create: false`
+    // throws.
+    const file = path ?? ":memory:"
+    // Bun throws when `create` is off and the file is absent; node has no option
+    // for it and would create the file, so the check is done here. Node also has
+    // no `readwrite`: read-write is its default, so only the false case says
+    // anything, and it says the same thing as `readonly`.
+    if (options?.create === false && file !== ":memory:" && !existsSync(file)) {
+      throw new Error(`unable to open database file: ${file}`)
+    }
+    const readOnly = options?.readonly === true || options?.readwrite === false
+    super(file, { enableForeignKeyConstraints: false, ...(readOnly ? { readOnly: true } : {}) })
   }
 
   /** Bun's alias for `prepare`, plus the statement extras Bun adds. */
   query(sql: string) {
-    return wrapStatement(this.prepare(sql))
+    return this.prepare(sql)
   }
 
   prepare(sql: string) {
-    return wrapStatement(withBunErrorCodes(() => super.prepare(sql)))
+    return wrapStatement(withBunErrorCodes(() => super.prepare(sql)), (this as any).__safeIntegers === true)
   }
 
   /**
    * Bun exposes this on the Database; node exposes `setReadBigInts` on the
-   * STATEMENT. Record the preference and apply it to statements as they are made.
+   * STATEMENT, so the preference is recorded here and applied in
+   * `wrapStatement` as each statement is prepared.
    */
   safeIntegers(enabled = true) {
     ;(this as any).__safeIntegers = enabled
@@ -127,9 +141,13 @@ export class Database extends DatabaseSync {
 }
 
 /** `each()` and `values()` are Bun-only; node spells both differently. */
-function wrapStatement(stmt: any) {
+function wrapStatement(stmt: any, safeIntegers = false) {
   if (stmt.__wrapped) return stmt
   stmt.__wrapped = true
+  // The database-level preference, carried down. Node has no database-level
+  // switch, so without this `db.safeIntegers(true)` recorded a flag nothing read
+  // and every column came back as a lossy Number instead of a BigInt.
+  if (safeIntegers) stmt.setReadBigInts(true)
   stmt.each = function (...args: unknown[]) {
     return this.all(...args)
   }

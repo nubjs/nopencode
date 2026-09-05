@@ -11,15 +11,19 @@
  * touch it: write(352) file(77) serve(27) sleep(18) stringWidth(16) spawn(7)
  * which(5) Glob(4) readableStreamToText(2) argv(2) Transpiler(1).
  *
- * Anything not implemented THROWS rather than returning undefined. A silently
- * missing API turns a real assertion into a passing no-op, which is the one
- * failure mode a test migration must not have.
+ * A member that is present but unimplemented THROWS rather than returning
+ * undefined, because a silently missing API turns a real assertion into a
+ * passing no-op. That is a promise about what is HERE, not a guarantee about
+ * everything Bun has: `BunShim` is an ordinary object, so a member nobody
+ * added reads as `undefined` like any other property. Add one when a call site
+ * needs it rather than assuming the shim will complain.
  */
 import { spawn as nodeSpawn, spawnSync } from "node:child_process"
+import { constants } from "node:os"
 import { createHash } from "node:crypto"
 import { Readable } from "node:stream"
 import { createServer } from "node:http"
-import { globSync, mkdirSync, existsSync } from "node:fs"
+import { globSync, mkdirSync, existsSync, statSync } from "node:fs"
 import { readFile, writeFile } from "node:fs/promises"
 import { dirname, resolve as resolvePath } from "node:path"
 import stringWidthPkg from "string-width"
@@ -54,11 +58,15 @@ globalThis.fetch = function (input: any, init?: any) {
  */
 function bunSpawn(cmd: string[] | { cmd: string[] }, opts: any = {}) {
   const argv = Array.isArray(cmd) ? cmd : cmd.cmd
-  const mode = (value: unknown) => (value === "ignore" || value === "inherit" ? value : "pipe")
+  // Bun's defaults are `["ignore", "pipe", "inherit"]`, not pipe for all three.
+  // Defaulting stderr to a pipe gives a child whose stderr nobody drains, which
+  // wedges it once the buffer fills — a hang rather than an error.
+  const mode = (value: unknown, fallback: "ignore" | "pipe" | "inherit") =>
+    value === undefined ? fallback : value === "ignore" || value === "inherit" ? value : "pipe"
   const child = nodeSpawn(argv[0]!, argv.slice(1), {
     cwd: opts.cwd,
     env: opts.env,
-    stdio: [mode(opts.stdin), mode(opts.stdout), mode(opts.stderr)],
+    stdio: [mode(opts.stdin, "ignore"), mode(opts.stdout, "pipe"), mode(opts.stderr, "inherit")],
   })
   return {
     get pid() {
@@ -71,11 +79,22 @@ function bunSpawn(cmd: string[] | { cmd: string[] }, opts: any = {}) {
     // after killing the child and would otherwise hang on a promise that never
     // settles.
     exited: new Promise<number>((resolve) => {
-      child.on("exit", (code, signal) => resolve(code ?? (signal ? 128 : 0)))
+      // Bun reports `128 + signum` for a signalled child, the shell convention.
+      child.on("exit", (code, signal) =>
+        resolve(code ?? (signal ? 128 + ((constants.signals as Record<string, number>)[signal] ?? 0) : 0)),
+      )
       child.on("error", () => resolve(-1))
     }),
     stdout: child.stdout ? Readable.toWeb(child.stdout) : undefined,
     stderr: child.stderr ? Readable.toWeb(child.stderr) : undefined,
+    // Both spelled the way Bun does: `signalCode` is the signal name or null,
+    // and two core tests read it to tell a killed child from an exited one.
+    get signalCode() {
+      return child.signalCode
+    },
+    get killed() {
+      return child.killed
+    },
     stdin: child.stdin
       ? {
           write: (chunk: string | Uint8Array) => {
@@ -102,7 +121,10 @@ function bunFile(path: string) {
     bytes: async () => new Uint8Array(await readFile(path)),
     exists: async () => existsSync(path),
     get size() {
-      return existsSync(path) ? require("node:fs").statSync(path).size : 0
+      // `statSync` is imported rather than `require`d: this file is ESM, so a
+      // `require` call here is a ReferenceError on Node 26 the first time
+      // anything reads `.size`.
+      return existsSync(path) ? statSync(path).size : 0
     },
   }
 }
@@ -198,6 +220,9 @@ const BunShim = {
   get argv() {
     return process.argv
   },
+  get env() {
+    return process.env
+  },
   /**
    * `Bun.Glob` over node's `fs.globSync`. Bun yields paths RELATIVE to the scan
    * root and node's glob does too when given `cwd`, so the shapes line up.
@@ -210,7 +235,13 @@ const BunShim = {
     }
     scanSync(options?: string | { cwd?: string; onlyFiles?: boolean }): string[] {
       const cwd = typeof options === "string" ? options : (options?.cwd ?? process.cwd())
-      return globSync(this.pattern, { cwd }) as string[]
+      const entries = globSync(this.pattern, { cwd }) as string[]
+      // Bun's `onlyFiles` defaults to TRUE; node's glob has no such option and
+      // returns matching directories too. Without the filter, `**/*` over a
+      // nested tree yields the directories as well, and a caller counting or
+      // reading the results gets a wrong answer rather than an error.
+      if (typeof options === "object" && options?.onlyFiles === false) return entries
+      return entries.filter((entry) => statSync(resolvePath(cwd, entry)).isFile())
     }
     async *scan(options?: string | { cwd?: string; onlyFiles?: boolean }): AsyncIterable<string> {
       for (const entry of this.scanSync(options)) yield entry

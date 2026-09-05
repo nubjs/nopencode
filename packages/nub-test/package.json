@@ -12,11 +12,12 @@
     }
   },
   "dependencies": {
-    "expect": "29.7.0",
-    "esbuild": "0.25.0",
-    "string-width": "7.2.0",
     "@babel/core": "7.27.1",
+    "@babel/preset-typescript": "7.27.1",
     "babel-preset-solid": "1.9.12",
-    "@babel/preset-typescript": "7.27.1"
+    "esbuild": "0.25.0",
+    "expect": "29.7.0",
+    "pretty-format": "29.7.0",
+    "string-width": "7.2.0"
   }
 }

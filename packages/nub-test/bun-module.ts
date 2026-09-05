@@ -9,6 +9,7 @@
  * result directly. Anything else is absent rather than approximated.
  */
 import { spawn } from "node:child_process"
+import { constants as osConstants } from "node:os"
 
 export { pathToFileURL } from "node:url"
 
@@ -68,8 +69,11 @@ class Shell {
         if (!this.options.quiet) process.stderr.write(d)
       })
       child.on("error", rejectRun)
-      child.on("close", (code) => {
-        const exitCode = code ?? 0
+      child.on("close", (code, signal) => {
+        // A signalled child has a null code. Reading that as 0 reported a
+        // SIGKILLed command as a success and suppressed the throw, which is a
+        // wrong answer rather than a missing feature.
+        const exitCode = code ?? (signal ? 128 + ((osConstants.signals as Record<string, number>)[signal] ?? 0) : 0)
         if (exitCode !== 0 && !this.options.nothrow) {
           const err = new Error(`Command failed with exit code ${exitCode}: ${this.command}\n${stderr}`)
           ;(err as any).exitCode = exitCode

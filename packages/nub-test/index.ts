@@ -20,6 +20,7 @@ import {
   mock as nodeMock,
 } from "node:test"
 import { expect as jestExpect } from "expect"
+import { format as prettyFormat } from "pretty-format"
 import { existsSync, readFileSync } from "node:fs"
 import { basename, dirname } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -106,16 +107,21 @@ function loadSnapshots(): Map<string, string> {
 }
 
 /**
- * pretty-format's output for the values this suite snapshots. A string is
- * printed inside double quotes with NO inner escaping — verified against the
- * committed files, which contain unescaped `"` in the payload.
+ * pretty-format's output for the values this suite snapshots.
  *
- * Anything else throws rather than guessing at pretty-format's object layout,
- * which would produce a confident mismatch instead of an honest gap.
+ * A string is printed inside double quotes with NO inner escaping — verified
+ * against the committed files, which contain unescaped `"` in the payload.
+ * Everything else goes through pretty-format itself rather than a hand-rolled
+ * layout: Bun writes Jest's snapshot format, and `printBasicPrototype: false`
+ * is what drops the `Object {` / `Array [` prefixes, which is exactly what the
+ * committed files show.
+ *
+ * pretty-format is not a new package in the tree — `expect` already depends on
+ * this version, so naming it here resolves to the same copy.
  */
 function serializeSnapshot(value: unknown): string {
   if (typeof value === "string") return `"${value}"`
-  throw new Error(`toMatchSnapshot on the node:test shim supports strings only, got ${typeof value}`)
+  return prettyFormat(value, { escapeString: false, printBasicPrototype: false })
 }
 
 const pass = (received: unknown, expected: string, ok: boolean) => ({
@@ -150,7 +156,20 @@ jestExpect.extend({
   toBeFunction: (r: unknown) => pass(r, "a function", typeof r === "function"),
   toBeArray: (r: unknown) => pass(r, "an array", Array.isArray(r)),
   toBeNil: (r: unknown) => pass(r, "null or undefined", r === null || r === undefined),
-  toBeEmpty: (r: any) => pass(r, "empty", r == null || r.length === 0 || Object.keys(r).length === 0),
+  // Bun's is a collection matcher: it fails on a number or a boolean rather
+  // than reading `Object.keys(5)` as empty and passing.
+  toBeEmpty: (r: any) =>
+    pass(
+      r,
+      "empty",
+      typeof r === "string" || Array.isArray(r)
+        ? r.length === 0
+        : r instanceof Map || r instanceof Set
+          ? r.size === 0
+          : typeof r === "object" && r !== null
+            ? Object.keys(r).length === 0
+            : false,
+    ),
   toStartWith: (r: unknown, e: string) => pass(r, `starting with ${e}`, typeof r === "string" && r.startsWith(e)),
   toEndWith: (r: unknown, e: string) => pass(r, `ending with ${e}`, typeof r === "string" && r.endsWith(e)),
   toInclude: (r: unknown, e: unknown) =>
@@ -311,7 +330,7 @@ export const test = Object.assign(runner, {
   only: variant("only"),
   skip: variant("skip"),
   todo: variant("todo"),
-  /** Concurrent is node:test's default; see the note on `describe.concurrent`. */
+  /** node:test runs a suite's subtests in series; see the note on `describe.concurrent`. */
   concurrent: runner,
   skipIf: (condition: boolean) => (condition ? variant("skip") : runner),
 }) as typeof runner & {
@@ -360,11 +379,27 @@ function wrap(inner: any): MockFn {
     }),
   })
   fn.mockClear = () => ctx.resetCalls()
-  fn.mockReset = () => ctx.restore()
+  // `ctx.restore()` puts the original implementation back but LEAVES the call
+  // records in place — measured, and the opposite of what all three of Bun's
+  // verbs do. So both names clear them explicitly; without that, an assertion
+  // after a restore counts calls from before it.
+  fn.mockReset = () => {
+    ctx.restore()
+    ctx.resetCalls()
+  }
   // Bun distinguishes reset (drop the implementation) from restore (put the
   // original back); node:test spells both `restore` on the mock context, and
   // for a `spyOn` that is what callers of either name want.
-  fn.mockRestore = () => ctx.restore()
+  fn.mockRestore = () => {
+    ctx.restore()
+    ctx.resetCalls()
+  }
+  // What makes `expect(spy).toHaveBeenCalled()` work at all. jest's matcher
+  // rejects anything without these two before it ever looks at `.mock`, with
+  // "received value must be a mock or spy function" — so their absence read as
+  // a failing assertion rather than as a missing shim.
+  ;(fn as any)._isMockFunction = true
+  ;(fn as any).getMockName = () => "jest.fn()"
   fn.mockImplementation = (impl) => {
     ctx.mockImplementation(impl)
     return fn
@@ -400,6 +435,25 @@ mock.restore = () => nodeMock.restoreAll()
  * actually imports. `createRequire` returns the CJS entry and would mock a
  * second copy — a silent no-op rather than an error.
  */
+
+/**
+ * Whether the two-argument `import.meta.resolve` honours its parent.
+ *
+ * It needs `--experimental-import-meta-resolve`. Without the flag node does not
+ * reject the second argument — it silently IGNORES it and resolves from the
+ * calling module, which here is this file. Measured: from `/tmp/a`, resolving
+ * a package that only `/tmp/b` can see returns `ERR_MODULE_NOT_FOUND` unflagged
+ * and the right URL flagged. So a `try`/`catch` cannot detect the condition;
+ * only comparing against a parent whose answer is known can.
+ */
+const RESOLVES_FROM_PARENT = (() => {
+  try {
+    return import.meta.resolve("./probe.mjs", "file:///nub-test-resolve-probe/") === "file:///nub-test-resolve-probe/probe.mjs"
+  } catch {
+    return false
+  }
+})()
+
 function resolveFromCaller(specifier: string): string {
   if (specifier.startsWith("node:") || specifier.startsWith("file:")) return specifier
   const previous = Error.prepareStackTrace
@@ -413,11 +467,12 @@ function resolveFromCaller(specifier: string): string {
     const parent = file.startsWith("file:") ? file : pathToFileURL(file).href
     try {
       return import.meta.resolve(specifier, parent)
-    } catch {
-      // The two-argument form needs --experimental-import-meta-resolve; without
-      // it node ignores the parent and throws. Fall through to the raw
-      // specifier, which still works whenever the shim's own package can see it.
-      return specifier
+    } catch (err) {
+      // A genuine resolution failure — the caller named something that does not
+      // exist from its own file. Say so, rather than falling back to a raw
+      // specifier that node would resolve from THIS file and mock a different
+      // copy of.
+      throw new Error(`mock.module(${JSON.stringify(specifier)}) could not resolve from ${parent}`, { cause: err })
     }
   }
   return specifier
@@ -429,6 +484,12 @@ mock.module = (specifier: string, factory?: () => any) => {
     throw new Error(
       `mock.module(${JSON.stringify(specifier)}) needs node's ` +
         `--experimental-test-module-mocks flag, which is not enabled`,
+    )
+  }
+  if (!RESOLVES_FROM_PARENT) {
+    throw new Error(
+      `mock.module(${JSON.stringify(specifier)}) needs node's --experimental-import-meta-resolve flag. ` +
+        `Without it the specifier resolves from the shim instead of the test file, which mocks a different copy.`,
     )
   }
   // Bun's factory returns the replacement module object; node wants named
