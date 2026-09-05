@@ -241,6 +241,25 @@ function resolveExtensionless(specifier: string, parentURL: string | undefined):
   return tryCandidates(fileURLToPath(new URL(specifier, parentURL)))
 }
 
+/**
+ * The same two `import.meta` Bun-isms the esbuild pass defines, as a babel
+ * plugin — because the Solid branch returns before that pass ever runs, so a
+ * `.tsx` file read `import.meta.env.VITE_*` off `undefined` while the `.ts`
+ * beside it worked. A plugin rather than a second esbuild pass: babel has
+ * already written an inline sourcemap, and esbuild's transform API cannot chain
+ * one, so a second pass would trade the stack traces for the substitution.
+ */
+const importMetaBunisms = {
+  visitor: {
+    MemberExpression(nodePath: any) {
+      const node = nodePath.node
+      if (node.object?.type !== "MetaProperty" || node.computed) return
+      if (node.property?.name === "dir") node.property.name = "dirname"
+      else if (node.property?.name === "env") nodePath.replaceWithSourceString("process.env")
+    },
+  },
+}
+
 registerHooks({
   resolve(specifier, context, nextResolve) {
     // `import { $ } from "bun"` — the module, distinct from the `Bun` global.
@@ -369,6 +388,7 @@ registerHooks({
         configFile: false,
         babelrc: false,
         sourceMaps: "inline",
+        plugins: [importMetaBunisms],
         presets: [
           SOLID_MODE === "universal" ? [solidPreset, { moduleName: "@opentui/solid", generate: "universal" }] : [solidPreset],
           ...(path.endsWith(".tsx") ? [[tsPreset, { isTSX: true, allExtensions: true }] as const] : []),
