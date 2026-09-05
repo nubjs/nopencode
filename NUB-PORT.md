@@ -64,6 +64,8 @@ Startup as measured above is `--version`: exec, runtime init, a small module gra
 
 Measured under a pty, nine alternating pairs, medians, fresh temp directory per run. `first_byte` is process start through to the first output; `first_paint` is the first 24-bit SGR sequence, which is the first byte of real screen content rather than of the terminal capability prologue.
 
+Both binaries were captured with `script/nub-pty-screen.py` first, to confirm the frames are comparable rather than one being a splash and the other a full UI. They are: same prompt box, same `tab agents  ctrl+p commands` footer, same status bar. They differ only in what sits above it — a release banner on one, an update dialog on the other, because this build is older than the release it checks against.
+
 | | `first_byte` | `first_paint` | paired wins |
 | --- | --- | --- | --- |
 | this build (v1.18.11 + port, nub) | **572 ms** | **2604 ms** | 9/9 |
