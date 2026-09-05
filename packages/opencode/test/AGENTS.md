@@ -87,7 +87,7 @@ Use `testEffect(...)` from `test/lib/effect.ts` for tests that exercise Effect s
 ### Core Pattern
 
 ```typescript
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Effect, Layer } from "effect"
 import { testEffect } from "../lib/effect"
 

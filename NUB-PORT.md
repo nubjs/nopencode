@@ -334,6 +334,10 @@ Three flags every script carries:
 - **`--test-timeout=30000`.** bun's own default is a 5-second per-test timeout, so the Bun numbers above were already bounded. Node's default is Infinity, which turns one wedged test into a suite that never returns.
 - **`--test-reporter=dot`**, the nearest thing to bun's `--only-failures`.
 
+`bun test` also reads `bunfig.toml`, and three packages declare a `[test] preload` there. `packages/app`'s `happydom.ts` becomes a second `--import`; `packages/core` and `packages/opencode` each preload a `test/preload.ts` and get the same treatment. Those two matter more than they look: both set `OPENCODE_DB=":memory:"`, without which `Database.path()` falls through to `~/.local/share/opencode/opencode-<channel>.db` and every test in the process shares one on-disk database with every test before it. `packages/opencode`'s also redirects the XDG directories at a per-pid temporary directory, points `OPENCODE_MODELS_PATH` at a fixture, clears the provider API-key variables and calls `initProjectors()`.
+
+`packages/tui` and `packages/cli` preload `@opentui/solid/preload`, which is the one bunfig entry with no Node equivalent: under the `node` export condition it resolves to a module whose entire body throws `is Bun-only`. Its Bun arm installs the Solid transform plugin, which is what `NUB_TEST_SOLID` already does in the resolver hooks, so neither script imports it.
+
 `tui` additionally stages the OpenTUI assets first and points `OTUI_ASSET_ROOT` at them; without that, OpenTUI resolves its native library by importing `@opentui/core-<platform>-<arch>`, whose exports map declares no main, and every renderer test dies with `No "exports" main defined`. The compiled binary solves the same problem the same way. `packages/app` splits into two runs because its halves need different export conditions — `--conditions=solid` for `src`, `--conditions=browser` for `test-browser` — and happy-dom moves from bun's `--preload` to a second `--import`.
 
 What the shim has to bridge, beyond renaming `beforeAll` to `before`:
