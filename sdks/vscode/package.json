@@ -81,14 +81,14 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "bun run package",
-    "compile": "bun run check-types && bun run lint && node esbuild.js",
+    "vscode:prepublish": "nub run package",
+    "compile": "nub run check-types && nub run lint && node esbuild.js",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-    "package": "bun run check-types && bun run lint && node esbuild.js --production",
+    "package": "nub run check-types && nub run lint && node esbuild.js --production",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "bun run compile-tests && bun run compile && bun run lint",
+    "pretest": "nub run compile-tests && nub run compile && nub run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vscode-test"
