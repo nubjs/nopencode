@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Effect, Layer, Queue } from "effect"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { GlobalBus, type GlobalEvent } from "@/bus/global"

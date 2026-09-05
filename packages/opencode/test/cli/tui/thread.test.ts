@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { Effect } from "effect"
 import fs from "fs/promises"
 import path from "path"

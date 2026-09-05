@@ -1,6 +1,6 @@
 import path from "node:path"
 import { pathToFileURL } from "node:url"
-import { expect } from "bun:test"
+import { expect } from "@opencode-ai/nub-test"
 import { Server } from "@modelcontextprotocol/sdk/server/index.js"
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js"
 import {

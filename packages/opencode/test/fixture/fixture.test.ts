@@ -1,5 +1,5 @@
 import { $ } from "bun"
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import fs from "fs/promises"
 import { tmpdir } from "./fixture"
 

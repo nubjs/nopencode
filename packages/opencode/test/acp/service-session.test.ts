@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it } from "@opencode-ai/nub-test"
 import type {
   AgentSideConnection,
   ForkSessionResponse,

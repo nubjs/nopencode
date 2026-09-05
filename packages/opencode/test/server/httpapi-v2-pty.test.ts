@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "@opencode-ai/nub-test"
 import { Context, Config as EffectConfig, Effect, Layer, Queue, Schema } from "effect"
 import { NodeHttpServer, NodeServices } from "@effect/platform-node"
 import { HttpClient, HttpClientRequest, HttpRouter, HttpServer } from "effect/unstable/http"

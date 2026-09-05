@@ -1,4 +1,4 @@
-import { expect } from "bun:test"
+import { expect } from "@opencode-ai/nub-test"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { Context, Deferred, Effect, Fiber, Layer, Logger } from "effect"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"

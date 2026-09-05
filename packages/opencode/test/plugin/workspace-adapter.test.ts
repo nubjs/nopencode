@@ -1,4 +1,4 @@
-import { afterEach, describe, expect } from "bun:test"
+import { afterEach, describe, expect } from "@opencode-ai/nub-test"
 import { Effect, Layer } from "effect"
 import { Npm } from "@opencode-ai/core/npm"
 import { Ripgrep } from "@opencode-ai/core/ripgrep"

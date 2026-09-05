@@ -7,7 +7,7 @@
   "private": true,
   "scripts": {
     "setup:recording-env": "bun run script/setup-recording-env.ts",
-    "test": "bun test --timeout 30000 --only-failures",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'test/**/*.test.ts'",
     "typecheck": "tsgo --noEmit"
   },
   "exports": {

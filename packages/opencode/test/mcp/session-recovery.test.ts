@@ -1,5 +1,5 @@
 import path from "node:path"
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 
 describe("mcp session recovery", () => {
   test("reinitializes and retries once after a session-bound POST returns 404", async () => {

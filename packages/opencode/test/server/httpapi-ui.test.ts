@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { ConfigProvider, Effect, Layer, Option } from "effect"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { Schema } from "effect"
 import { ConfigLSPV1 } from "@opencode-ai/core/v1/config/lsp"
 

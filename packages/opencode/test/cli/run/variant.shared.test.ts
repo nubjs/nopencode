@@ -2,7 +2,7 @@ import path from "path"
 import { NodeFileSystem } from "@effect/platform-node"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { FSUtil } from "@opencode-ai/core/fs-util"
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { Effect, FileSystem, Layer } from "effect"
 import { Global } from "@opencode-ai/core/global"
 import {

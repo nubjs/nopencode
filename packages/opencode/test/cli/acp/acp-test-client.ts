@@ -1,4 +1,4 @@
-import { expect } from "bun:test"
+import { expect } from "@opencode-ai/nub-test"
 import type { SessionConfigOption, SessionConfigSelectOption } from "@agentclientprotocol/sdk"
 import { Duration, Effect } from "effect"
 import type { AcpHandle } from "../../lib/cli-process"

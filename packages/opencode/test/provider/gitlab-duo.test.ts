@@ -3,7 +3,7 @@ export {}
 //
 //
 //
-// import { test, expect, describe } from "bun:test"
+// import { test, expect, describe } from "@opencode-ai/nub-test"
 // import path from "path"
 
 // import { ProviderV2 } from "@opencode-ai/core/provider"

@@ -1,6 +1,6 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { Session } from "@/session/session"
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Effect, Layer } from "effect"
 import { HttpClient, HttpClientRequest, HttpRouter } from "effect/unstable/http"
 import { HttpApi, HttpApiBuilder } from "effect/unstable/httpapi"

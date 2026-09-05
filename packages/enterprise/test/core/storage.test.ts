@@ -1,4 +1,4 @@
-import { describe, expect, test, afterAll } from "bun:test"
+import { describe, expect, test, afterAll } from "@opencode-ai/nub-test"
 import { Storage } from "../../src/core/storage"
 
 describe("core.storage", () => {

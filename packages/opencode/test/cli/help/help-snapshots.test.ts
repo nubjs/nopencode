@@ -11,7 +11,7 @@
 // terminal sizes. The default opencode tui command is excluded —
 // `opencode --help` includes an ASCII banner that pulls in the install
 // version (changes per release), so we'd snapshot a moving target.
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Effect } from "effect"
 import { cliIt } from "../../lib/cli-process"
 import { normalizeForSnapshot, PATH_SEP } from "../../lib/snapshot"

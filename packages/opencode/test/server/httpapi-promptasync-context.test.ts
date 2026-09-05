@@ -8,7 +8,7 @@
 // Effect.provideService calls there are required, not defensive duplication.
 
 import { NodeHttpServer, NodeServices } from "@effect/platform-node"
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Deferred, Effect, Layer, Schema, Scope } from "effect"
 import * as Stream from "effect/Stream"
 import { HttpClient, HttpRouter, HttpServerResponse } from "effect/unstable/http"

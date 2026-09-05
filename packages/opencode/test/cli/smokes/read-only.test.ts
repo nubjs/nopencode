@@ -14,7 +14,7 @@
 // Speed: each test pays ~1.5s for bun startup. 7 tests serialize within this
 // file. See script/prebuild-test-cli.ts for an opt-in pre-built binary that
 // cuts per-spawn cost when this suite gets bigger.
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Effect } from "effect"
 import { cliIt } from "../../lib/cli-process"
 

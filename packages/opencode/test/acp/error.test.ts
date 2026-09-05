@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { RequestError } from "@agentclientprotocol/sdk"
 import * as ACPError from "../../src/acp/error"
 

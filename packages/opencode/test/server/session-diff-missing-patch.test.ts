@@ -10,7 +10,7 @@
  * This test inserts a session row with a missing-patch diff entry and
  * asserts that GET /session/<id>/diff returns 200 with empty data.
  */
-import { afterEach, describe, expect } from "bun:test"
+import { afterEach, describe, expect } from "@opencode-ai/nub-test"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { Effect, Layer } from "effect"
 import { SessionPaths } from "@/server/routes/instance/httpapi/groups/session"

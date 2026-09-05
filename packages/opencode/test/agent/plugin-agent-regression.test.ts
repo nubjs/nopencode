@@ -1,4 +1,4 @@
-import { expect } from "bun:test"
+import { expect } from "@opencode-ai/nub-test"
 import { Npm } from "@opencode-ai/core/npm"
 import { Effect } from "effect"
 import path from "path"

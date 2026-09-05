@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "@opencode-ai/nub-test"
 import net from "node:net"
 import path from "node:path"
 import { pathToFileURL } from "node:url"

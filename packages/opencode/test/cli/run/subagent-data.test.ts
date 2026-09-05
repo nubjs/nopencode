@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import type { Event } from "@opencode-ai/sdk/v2"
 import { entryBody } from "@/cli/cmd/run/entry.body"
 import {

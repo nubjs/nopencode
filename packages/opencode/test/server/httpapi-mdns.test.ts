@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock, test } from "bun:test"
+import { afterEach, describe, expect, mock, test } from "@opencode-ai/nub-test"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { withTimeout } from "../../src/util/timeout"
 import { resetDatabase } from "../fixture/db"

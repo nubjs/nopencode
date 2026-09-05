@@ -1,6 +1,6 @@
 import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "@opencode-ai/nub-test"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
 import path from "path"
 import { tool, type ModelMessage } from "ai"

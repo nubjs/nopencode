@@ -13,7 +13,8 @@
   "scripts": {
     "build": "bun run script/build.ts",
     "dev": "bun run src/index.ts",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'src/**/*.test.ts'"
   },
   "dependencies": {
     "@effect/platform-node": "catalog:",
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@opencode-ai/script": "workspace:*",
     "@types/bun": "catalog:",
-    "@typescript/native-preview": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@opencode-ai/nub-test": "workspace:*"
   }
 }

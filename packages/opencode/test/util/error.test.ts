@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { NamedError } from "@opencode-ai/core/util/error"
 import { MessageError } from "../../src/session/message-error"
 

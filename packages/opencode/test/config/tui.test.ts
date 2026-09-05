@@ -1,4 +1,4 @@
-import { expect } from "bun:test"
+import { expect } from "@opencode-ai/nub-test"
 import path from "path"
 import { pathToFileURL } from "url"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"

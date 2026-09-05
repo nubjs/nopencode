@@ -1,4 +1,4 @@
-import { expect } from "bun:test"
+import { expect } from "@opencode-ai/nub-test"
 import type { InitializeResponse, NewSessionResponse, SessionConfigOption } from "@agentclientprotocol/sdk"
 import { Effect } from "effect"
 import type { CliFixture } from "../../lib/cli-process"

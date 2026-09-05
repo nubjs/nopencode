@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { join, resolve, sep } from "node:path"
 

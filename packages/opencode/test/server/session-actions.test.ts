@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock } from "bun:test"
+import { afterEach, describe, expect, mock } from "@opencode-ai/nub-test"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { Effect, Layer } from "effect"
 import { Session as SessionNs } from "@/session/session"

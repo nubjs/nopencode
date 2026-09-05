@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "bun test --timeout 5000 --only-failures",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'test/**/*.test.ts'",
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@types/bun": "catalog:",
-    "@typescript/native-preview": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@opencode-ai/nub-test": "workspace:*"
   }
 }

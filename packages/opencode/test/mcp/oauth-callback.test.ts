@@ -1,4 +1,4 @@
-import { test, expect, describe, afterEach } from "bun:test"
+import { test, expect, describe, afterEach } from "@opencode-ai/nub-test"
 import { createConnection, createServer as createNetServer } from "net"
 import { McpOAuthCallback } from "../../src/mcp/oauth-callback"
 import { parseRedirectUri } from "../../src/mcp/oauth-provider"

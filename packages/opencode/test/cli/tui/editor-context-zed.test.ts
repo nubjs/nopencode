@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite"
 import { mkdir, symlink } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { afterEach, expect, spyOn, test } from "bun:test"
+import { afterEach, expect, spyOn, test } from "@opencode-ai/nub-test"
 import { isZedTerminal, offsetToPosition, resolveZedDbPath, resolveZedSelection } from "@opencode-ai/tui/editor-zed"
 import { tmpdir } from "../../fixture/fixture"
 

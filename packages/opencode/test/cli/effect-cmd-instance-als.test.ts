@@ -1,4 +1,4 @@
-import { afterEach, expect } from "bun:test"
+import { afterEach, expect } from "@opencode-ai/nub-test"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { Effect } from "effect"

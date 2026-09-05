@@ -1,4 +1,4 @@
-import { expect } from "bun:test"
+import { expect } from "@opencode-ai/nub-test"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { Provider } from "../../src/provider/provider"
 

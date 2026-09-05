@@ -1,5 +1,5 @@
 import { NodeFileSystem } from "@effect/platform-node"
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { Cause, Deferred, Effect, Exit, Layer, Scope, Stream } from "effect"
 import { Headers, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { Socket } from "effect/unstable/socket"

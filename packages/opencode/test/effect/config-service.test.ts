@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Config, ConfigProvider, Context, Effect, Layer, Option } from "effect"
 import { ConfigService } from "../../src/effect/config-service"
 import { it } from "../lib/effect"

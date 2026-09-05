@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "@opencode-ai/nub-test"
 import { Option, Redacted } from "effect"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { ServerAuth } from "../../src/server/auth"

@@ -1,6 +1,6 @@
 import { NodeHttpServer, NodeServices } from "@effect/platform-node"
 import { NamedError } from "@opencode-ai/core/util/error"
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { ConfigErrorV1 } from "@opencode-ai/core/v1/config/error"
 import { Effect, Layer } from "effect"
 import { HttpClient, HttpClientRequest, HttpRouter } from "effect/unstable/http"

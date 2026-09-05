@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import type { AudioPlayOptions, AudioSound } from "@opentui/core"
 import { createTuiAttention } from "@opencode-ai/tui/attention"
 import type { TuiConfig } from "@opencode-ai/tui/config"

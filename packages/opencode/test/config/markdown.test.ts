@@ -1,4 +1,4 @@
-import { expect, test, describe } from "bun:test"
+import { expect, test, describe } from "@opencode-ai/nub-test"
 import { ConfigMarkdown } from "@/config/markdown"
 
 describe("ConfigMarkdown: normal template", () => {

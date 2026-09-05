@@ -17,7 +17,7 @@
 // builders (`opencode.serve(opts)`, `opencode.acp(opts)`, `opencode.auth(...)`)
 // without changing the fixture. Long-lived commands like `serve` will need a
 // different return shape — see the TODO at the bottom of OpencodeCli.
-import { test, type TestOptions } from "bun:test"
+import { test, type TestOptions } from "@opencode-ai/nub-test"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"

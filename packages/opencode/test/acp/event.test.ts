@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it } from "@opencode-ai/nub-test"
 import type { AgentSideConnection } from "@agentclientprotocol/sdk"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import type { Event, Message, OpencodeClient, Part, SessionMessageResponse, ToolPart } from "@opencode-ai/sdk/v2"

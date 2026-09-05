@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { writeSessionOutput } from "@/cli/cmd/run/stream"
 import type { FooterApi, FooterEvent, StreamCommit } from "@/cli/cmd/run/types"
 

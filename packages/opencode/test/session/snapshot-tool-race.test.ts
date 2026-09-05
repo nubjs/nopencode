@@ -11,7 +11,7 @@
  * before tools run by hooking into start-step, but the AI SDK executes
  * tools internally during multi-step processing before emitting events.
  */
-import { expect } from "bun:test"
+import { expect } from "@opencode-ai/nub-test"
 import { Effect, Layer } from "effect"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import fs from "fs/promises"

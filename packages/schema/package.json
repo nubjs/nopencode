@@ -9,7 +9,8 @@
     "./*": "./src/*.ts"
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'test/**/*.test.ts'"
   },
   "dependencies": {
     "effect": "catalog:"

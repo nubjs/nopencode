@@ -1,4 +1,4 @@
-import { test, expect, describe } from "bun:test"
+import { test, expect, describe } from "@opencode-ai/nub-test"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
 import { extractResponseText, formatPromptTooLargeError } from "../../src/cli/cmd/github"
 import type { MessageV2 } from "../../src/session/message-v2"

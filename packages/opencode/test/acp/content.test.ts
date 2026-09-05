@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import type { ContentBlock } from "@agentclientprotocol/sdk"
 import { pathToFileURL } from "node:url"
 import { contentBlockToParts, partsToContentChunks, promptContentToParts } from "../../src/acp/content"

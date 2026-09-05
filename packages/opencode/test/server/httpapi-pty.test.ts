@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "@opencode-ai/nub-test"
 import { NodeHttpServer, NodeServices } from "@effect/platform-node"
 import { PtyID } from "@opencode-ai/core/pty/schema"
 import { Server } from "../../src/server/server"

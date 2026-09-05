@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { SessionEvent } from "@opencode-ai/core/session/event"
 import { EventManifest as SchemaEventManifest } from "@opencode-ai/schema/event-manifest"
 import { Todo } from "@/session/todo"

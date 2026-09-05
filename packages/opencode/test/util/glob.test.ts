@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test"
+import { describe, test, expect } from "@opencode-ai/nub-test"
 import path from "path"
 import fs from "fs/promises"
 import { Glob } from "@opencode-ai/core/util/glob"

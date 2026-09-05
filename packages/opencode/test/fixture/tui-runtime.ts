@@ -1,4 +1,4 @@
-import { spyOn } from "bun:test"
+import { spyOn } from "@opencode-ai/nub-test"
 import path from "path"
 import { resolve, type Info, type Resolved } from "@opencode-ai/tui/config"
 import { TuiConfig } from "../../src/config/tui"

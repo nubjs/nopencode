@@ -6,7 +6,7 @@
 // transform emits) actually land in the body Cloudflare AI Gateway forwards
 // upstream, which is the only place the bug was observable.
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, test } from "@opencode-ai/nub-test"
 import type { JSONValue } from "ai"
 import { generateText } from "ai"
 import { createAiGateway } from "ai-gateway-provider"

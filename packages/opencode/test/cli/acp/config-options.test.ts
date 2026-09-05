@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import type { SetSessionConfigOptionResponse } from "@agentclientprotocol/sdk"
 import { Effect } from "effect"
 import { cliIt } from "../../lib/cli-process"

@@ -1,5 +1,5 @@
 import { NodeHttpServer, NodeServices } from "@effect/platform-node"
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Context, Effect, Layer, Queue, Ref, Schema, Stream } from "effect"
 import {
   FetchHttpClient,

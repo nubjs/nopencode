@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test"
+import { test, expect } from "@opencode-ai/nub-test"
 import { Wildcard } from "@/util/wildcard"
 
 test("match handles glob tokens", () => {

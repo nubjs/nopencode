@@ -1,4 +1,4 @@
-import { describe, expect, test, afterEach } from "bun:test"
+import { describe, expect, test, afterEach } from "@opencode-ai/nub-test"
 import { Ide } from "../../src/ide"
 
 describe("ide", () => {

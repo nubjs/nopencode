@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock } from "bun:test"
+import { afterEach, describe, expect, mock } from "@opencode-ai/nub-test"
 import { mkdir } from "node:fs/promises"
 import path from "node:path"
 import { Effect, Layer, Stream } from "effect"

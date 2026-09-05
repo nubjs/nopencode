@@ -5,7 +5,7 @@
 // `serve` is long-lived: the harness returns a handle (url/port/kill/exited)
 // and kills the process when the test scope closes. The OS-assigned port is
 // parsed off the "listening on http://..." line.
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Effect } from "effect"
 import { HttpClient } from "effect/unstable/http"
 import { cliIt } from "../../lib/cli-process"

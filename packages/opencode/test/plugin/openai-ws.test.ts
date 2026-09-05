@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { EventEmitter } from "node:events"
 import { createServer, type IncomingMessage, type Server as HttpServer } from "node:http"
 import net, { type AddressInfo, type Socket } from "node:net"

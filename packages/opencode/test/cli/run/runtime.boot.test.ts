@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock, spyOn, test } from "bun:test"
+import { afterEach, describe, expect, mock, spyOn, test } from "@opencode-ai/nub-test"
 import { OpencodeClient, type Provider } from "@opencode-ai/sdk/v2"
 import type { Resolved } from "@opencode-ai/tui/config"
 import { TuiConfig } from "@/config/tui"

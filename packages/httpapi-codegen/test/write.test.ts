@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Effect, FileSystem, Option } from "effect"
 import { write, type Output } from "../src"
 import { it } from "./effect"

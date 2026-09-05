@@ -1,4 +1,4 @@
-import { test, expect, describe } from "bun:test"
+import { test, expect, describe } from "@opencode-ai/nub-test"
 import { determineScope } from "@modelcontextprotocol/sdk/client/auth.js"
 import { McpOAuthProvider, OAUTH_CALLBACK_PORT, OAUTH_CALLBACK_PATH } from "../../src/mcp/oauth-provider"
 import type { McpAuth } from "../../src/mcp/auth"

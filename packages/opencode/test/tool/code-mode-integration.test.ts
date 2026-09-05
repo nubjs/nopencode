@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test } from "bun:test"
+import { beforeAll, describe, expect, test } from "@opencode-ai/nub-test"
 import { CodeModeTool, describeCatalog } from "@/tool/code-mode"
 import { McpCatalog } from "@/mcp/catalog"
 import { Agent } from "@/agent/agent"

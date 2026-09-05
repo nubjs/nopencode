@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "@opencode-ai/nub-test"
 import { gunzipSync, inflateSync } from "node:zlib"
 import { Server } from "../../src/server/server"
 import { resetDatabase } from "../fixture/db"

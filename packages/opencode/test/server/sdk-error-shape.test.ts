@@ -7,7 +7,7 @@
  * Both cases must throw a real `Error` instance with a non-empty `.message`
  * extracted from the response body, plus `.status` and `.body` attached.
  */
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "@opencode-ai/nub-test"
 import { createOpencodeClient } from "@opencode-ai/sdk/v2"
 import { Server } from "../../src/server/server"
 import { disposeAllInstances, tmpdir } from "../fixture/fixture"

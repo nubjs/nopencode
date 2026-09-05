@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { OAUTH_DUMMY_KEY } from "../../src/auth"
 import { oauthScope, SnowflakeCortexAuthPlugin } from "../../src/plugin/snowflake-cortex"
 

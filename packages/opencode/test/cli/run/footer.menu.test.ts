@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { createRoot } from "solid-js"
 import { FOOTER_MENU_ROWS, createFooterMenuState } from "@/cli/cmd/run/footer.menu"
 

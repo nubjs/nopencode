@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { Effect } from "effect"
 import * as DateTime from "effect/DateTime"
 import { SessionID } from "../../src/session/schema"

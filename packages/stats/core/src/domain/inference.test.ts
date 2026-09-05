@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { toGeoAggregate, toModelAggregate, toProviderAggregate } from "./inference"
 import { modelAuthor, normalizeInferenceModel, statModel, statProvider } from "./model-normalization"
 

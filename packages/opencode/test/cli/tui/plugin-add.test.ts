@@ -1,4 +1,4 @@
-import { expect, spyOn, test } from "bun:test"
+import { expect, spyOn, test } from "@opencode-ai/nub-test"
 import fs from "fs/promises"
 import path from "path"
 import { pathToFileURL } from "url"

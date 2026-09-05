@@ -5,8 +5,10 @@
   "type": "module",
   "exports": {
     ".": {
-      "bun": "./bun-impl.ts",
       "default": "./index.ts"
+    },
+    "./hooks": {
+      "default": "./hooks.ts"
     }
   },
   "dependencies": {

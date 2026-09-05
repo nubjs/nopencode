@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { getAdapter, registerAdapter } from "../../src/control-plane/adapters"
 import { ProjectV2 } from "@opencode-ai/core/project"
 import type { WorkspaceInfo } from "../../src/control-plane/types"

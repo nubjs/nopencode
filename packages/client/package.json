@@ -11,7 +11,7 @@
   "scripts": {
     "generate": "nub script/build.ts",
     "check:generated": "nub run generate && git diff --exit-code -- src/generated src/generated-effect",
-    "test": "bun test --timeout 5000",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'test/**/*.test.ts'",
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {

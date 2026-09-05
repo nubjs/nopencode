@@ -1,6 +1,6 @@
 import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
-import { describe, test, expect } from "bun:test"
+import { describe, test, expect } from "@opencode-ai/nub-test"
 import { Effect } from "effect"
 import { Permission } from "../src/permission"
 import { Config } from "@/config/config"

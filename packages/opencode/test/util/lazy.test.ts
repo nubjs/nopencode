@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { lazy } from "../../src/util/lazy"
 
 describe("util.lazy", () => {

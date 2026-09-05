@@ -1,4 +1,4 @@
-import { afterEach, describe, expect } from "bun:test"
+import { afterEach, describe, expect } from "@opencode-ai/nub-test"
 import { $ } from "bun"
 import fs from "fs/promises"
 import path from "path"

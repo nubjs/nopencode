@@ -20,7 +20,8 @@
     "random": "echo 'Random script'",
     "sso": "aws sso login --sso-session=opencode --no-browser",
     "translate:app": "bun run script/translate-app.ts",
-    "test": "echo 'do not run tests from root' && exit 1"
+    "test": "echo 'do not run tests from root' && exit 1",
+    "test:all": "node script/test-all.mjs"
   },
   "workspaces": {
     "packages": [
@@ -105,7 +106,8 @@
     "prettier": "3.6.2",
     "semver": "^7.6.0",
     "sst": "catalog:",
-    "turbo": "2.10.2"
+    "turbo": "2.10.2",
+    "@opencode-ai/nub-test": "workspace:*"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.933.0",

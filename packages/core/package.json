@@ -9,7 +9,7 @@
     "db": "nub exec drizzle-kit",
     "migration": "bun run script/migration.ts",
     "fix-node-pty": "nub script/fix-node-pty.ts",
-    "test": "bun test --only-failures",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot --experimental-test-module-mocks 'test/**/*.test.ts'",
     "typecheck": "tsgo --noEmit"
   },
   "bin": {

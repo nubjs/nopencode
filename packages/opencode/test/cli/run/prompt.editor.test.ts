@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { realignEditorPromptParts, resolveEditorSlashValue } from "@/cli/cmd/run/prompt.editor"
 import type { RunPromptPart } from "@/cli/cmd/run/types"
 

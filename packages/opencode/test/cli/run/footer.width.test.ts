@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { footerWidthPolicy } from "@/cli/cmd/run/footer.width"
 
 describe("run footer width", () => {

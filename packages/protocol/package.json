@@ -8,7 +8,8 @@
     "./*": "./src/*.ts"
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'test/**/*.test.ts'"
   },
   "dependencies": {
     "@opencode-ai/schema": "workspace:*",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@types/bun": "catalog:",
-    "@typescript/native-preview": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@opencode-ai/nub-test": "workspace:*"
   }
 }

@@ -6,7 +6,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "test": "bun test --timeout 30000 --only-failures",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'test/**/*.test.ts'",
     "typecheck": "tsgo --noEmit"
   },
   "exports": {
@@ -18,7 +18,8 @@
   "devDependencies": {
     "@effect/sql-sqlite-bun": "catalog:",
     "@types/bun": "catalog:",
-    "@typescript/native-preview": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@opencode-ai/nub-test": "workspace:*"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",

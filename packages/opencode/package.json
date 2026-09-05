@@ -7,7 +7,7 @@
   "private": true,
   "scripts": {
     "typecheck": "tsgo --noEmit",
-    "test": "bun test --timeout 30000 --only-failures",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot --experimental-test-module-mocks 'test/**/*.test.ts'",
     "test:httpapi": "nub script/httpapi-exercise.ts --mode coverage --fail-on-missing --fail-on-skip && nub script/httpapi-exercise.ts --mode auth --fail-on-missing --fail-on-skip && nub script/httpapi-exercise.ts --mode effect --fail-on-missing --fail-on-skip",
     "bench:test": "bun run script/bench-test-suite.ts",
     "profile:test": "bun run script/profile-test-files.ts",
@@ -50,7 +50,8 @@
     "vscode-languageserver-types": "3.17.5",
     "why-is-node-running": "3.2.2",
     "babel-preset-solid": "1.9.12",
-    "@babel/preset-typescript": "7.27.1"
+    "@babel/preset-typescript": "7.27.1",
+    "@opencode-ai/nub-test": "workspace:*"
   },
   "dependencies": {
     "@actions/core": "1.11.1",

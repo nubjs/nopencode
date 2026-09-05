@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import path from "path"
 import { Module } from "@opencode-ai/core/util/module"
 import { Filesystem } from "@/util/filesystem"

@@ -23,7 +23,8 @@
     "db:push": "drizzle-kit push --config=drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.config.ts",
     "honeycomb:backfill": "bun src/honeycomb-backfill.ts",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'src/**/*.test.ts'"
   },
   "dependencies": {
     "@aws-sdk/client-athena": "3.933.0",
@@ -38,7 +39,8 @@
     "@types/node": "catalog:",
     "@typescript/native-preview": "catalog:",
     "drizzle-kit": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@opencode-ai/nub-test": "workspace:*"
   },
   "engines": {
     "node": ">=22"

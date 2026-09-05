@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { experimentalWebSocketsEnabled } from "../../src/plugin"
 
 describe("plugin.openai.websocket rollout", () => {

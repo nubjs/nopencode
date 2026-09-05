@@ -1,4 +1,4 @@
-import { test } from "bun:test"
+import { test } from "@opencode-ai/nub-test"
 import { Cause, Effect, Exit, Layer } from "effect"
 import type { Scope } from "effect/Scope"
 import { TestClock, TestConsole } from "effect/testing"

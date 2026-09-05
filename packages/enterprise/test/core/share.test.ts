@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { Share } from "../../src/core/share"
 import { Storage } from "../../src/core/storage"
 import { Identifier } from "@opencode-ai/core/util/identifier"

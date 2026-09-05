@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { $ } from "bun"
 import path from "path"
 import { eq } from "drizzle-orm"

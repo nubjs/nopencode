@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { afterEach, expect, spyOn, test } from "bun:test"
+import { afterEach, expect, spyOn, test } from "@opencode-ai/nub-test"
 import { createRoot } from "solid-js"
 import { EditorContextProvider, useEditorContext, type EditorIntegration } from "@opencode-ai/tui/context/editor"
 import { tmpdir } from "../../fixture/fixture"

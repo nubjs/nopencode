@@ -8,7 +8,8 @@
     "dev": "vite dev --host 0.0.0.0",
     "dev:remote": "VITE_AUTH_URL=https://auth.dev.opencode.ai VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51RtuLNE7fOCwHSD4mewwzFejyytjdGoSDK7CAvhbffwaZnPbNb2rwJICw6LTOXCmWO320fSNXvb5NzI08RZVkAxd00syfqrW7t bun sst shell --stage=dev bun dev",
     "build": "nub script/generate-sitemap.ts && vite build && nub ../../opencode/script/schema.ts ./.output/public/config.json ./.output/public/tui.json",
-    "start": "vite start"
+    "start": "vite start",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'test/**/*.test.ts'"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "1.15.2",

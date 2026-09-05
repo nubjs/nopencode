@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import type { V2SessionHistoryData } from "../src/v2/gen/types.gen"
 
 test("uses numeric Session history positions", () => {

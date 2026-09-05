@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it } from "@opencode-ai/nub-test"
 import type {
   AgentSideConnection,
   RequestPermissionRequest,

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect } from "bun:test"
+import { afterEach, describe, expect } from "@opencode-ai/nub-test"
 import { Effect, Layer, Queue, Schema, Stream } from "effect"
 import { EventPaths } from "../../src/server/routes/instance/httpapi/groups/event"
 import { resetDatabase } from "../fixture/db"

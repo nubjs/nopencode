@@ -1,4 +1,4 @@
-import { afterEach, describe, expect } from "bun:test"
+import { afterEach, describe, expect } from "@opencode-ai/nub-test"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { Deferred, Effect, Fiber, Layer } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/unstable/http"

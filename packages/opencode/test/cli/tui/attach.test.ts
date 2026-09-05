@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 
 describe("tui attach", () => {
   test("loads the TUI integration lazily", async () => {

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import path from "path"
 import { pathToFileURL } from "url"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"

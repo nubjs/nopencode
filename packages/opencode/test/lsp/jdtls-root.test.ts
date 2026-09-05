@@ -1,4 +1,4 @@
-import { describe, test, expect, afterAll } from "bun:test"
+import { describe, test, expect, afterAll } from "@opencode-ai/nub-test"
 import path from "path"
 import fs from "fs/promises"
 import os from "os"

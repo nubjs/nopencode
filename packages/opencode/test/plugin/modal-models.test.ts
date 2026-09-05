@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import type { Model, Provider } from "@opencode-ai/sdk/v2"
 import { ModalPlugin } from "@/plugin/modal/modal"
 

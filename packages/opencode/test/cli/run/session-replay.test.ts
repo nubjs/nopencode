@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { replayLocalRows, replaySession } from "@/cli/cmd/run/session-replay"
 import type { SessionMessages } from "@/cli/cmd/run/session.shared"
 import type { RunProvider } from "@/cli/cmd/run/types"

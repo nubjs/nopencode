@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect } from "@opencode-ai/nub-test"
 import { Cause, Deferred, Effect, Exit, Fiber, Latch, Ref, Scope } from "effect"
 import { Runner } from "@/effect/runner"
 import { it } from "../lib/effect"

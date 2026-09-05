@@ -27,7 +27,7 @@
     "access": "public"
   },
   "scripts": {
-    "test": "bun test --timeout 30000 --only-failures",
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'test/**/*.test.ts'",
     "typecheck": "tsgo --noEmit",
     "build": "bun ./script/build.ts",
     "verify:package": "bun ./script/verify-package.ts"
@@ -48,7 +48,8 @@
     "@types/node": "catalog:",
     "@typescript/native-preview": "catalog:",
     "effect": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@opencode-ai/nub-test": "workspace:*"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.0-beta.83",
