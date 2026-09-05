@@ -16,7 +16,6 @@
     "effect": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "catalog:",
     "@typescript/native-preview": "catalog:",
     "@opencode-ai/nub-test": "workspace:*"
   }
