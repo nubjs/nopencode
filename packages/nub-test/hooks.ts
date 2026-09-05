@@ -46,6 +46,62 @@ const SOLID_CLIENT: Record<string, string> = { "": "solid.js", store: "store.js"
 const SOLID_MODE = process.env["NUB_TEST_SOLID"]
 
 /**
+ * Path suffixes whose `export * as X from "…"` should become a mutable object.
+ *
+ * A module namespace is non-extensible with non-configurable properties, so
+ * `spyOn(Npm, "add")` fails with "Cannot redefine property"; Bun relaxes the
+ * rule for mocking and node does not. Rewriting the re-export into a Proxy over
+ * an ordinary object fixes that, at the cost of the module no longer being a
+ * real namespace.
+ *
+ * So it is opt-in and NAMED, not applied to the idiom at large: 389 modules in
+ * this workspace use `export * as`, and exactly two are ever spied on. Turning
+ * it on everywhere would trade 48 assertions for a semantic change in every
+ * module the suite loads.
+ */
+const SPYABLE = (process.env["NUB_TEST_SPYABLE"] ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)
+
+/**
+ * `export * as X from "spec"` -> a live, WRITABLE view of the same namespace.
+ *
+ * Reads fall through to the namespace, writes land on the proxy's own target, so
+ * a spy shadows the export while every unspied name still tracks the module. The
+ * target is an ordinary empty object rather than the namespace itself: a proxy
+ * may not report a non-configurable target property as configurable, so wrapping
+ * the namespace directly would throw the moment `spyOn` looked at it.
+ *
+ * Everything is lazy. At the point this runs the module is still evaluating, so
+ * reading a binding eagerly would hit its temporal dead zone.
+ *
+ * The result is exported under an alias rather than as `export const X`, because
+ * `export * as X` creates no LOCAL binding — and `packages/opencode/src/config/tui.ts`
+ * re-exports itself as `TuiConfig` while also importing a different `TuiConfig`,
+ * so a local const of that name is a redeclaration.
+ */
+function mutableNamespaces(source: string): string {
+  return source.replace(/^export \* as (\w+) from ("[^"]+"|'[^']+')/gm, (_all, name, spec) => {
+    const ns = `__ns_${name}`
+    const overlay = `__ov_${name}`
+    return (
+      `import * as ${ns} from ${spec}\n` +
+      `const ${overlay}: Record<string | symbol, unknown> = {}\n` +
+      `const __exp_${name}: any = new Proxy(${overlay}, {\n` +
+      `  get: (t, k, r) => (k in t ? Reflect.get(t, k, r) : (${ns} as any)[k]),\n` +
+      `  has: (t, k) => k in t || k in ${ns},\n` +
+      `  ownKeys: (t) => Array.from(new Set([...Reflect.ownKeys(t), ...Object.keys(${ns})])),\n` +
+      `  getOwnPropertyDescriptor: (t, k) =>\n` +
+      `    Reflect.getOwnPropertyDescriptor(t, k) ??\n` +
+      `    (k in ${ns} ? { value: (${ns} as any)[k], writable: true, enumerable: true, configurable: true } : undefined),\n` +
+      `})\n` +
+      `export { __exp_${name} as ${name} }`
+    )
+  })
+}
+
+/**
  * Resolve symlinks before handing a URL back.
  *
  * Node keys its module cache on the resolved URL, so two spellings of one file
@@ -275,6 +331,13 @@ registerHooks({
     }
     const found = resolveExtensionless(specifier, context.parentURL)
     if (found) return { url: found, shortCircuit: true }
+    // The one specifier whose node arm is a thrown error rather than an
+    // implementation. Aliased the same way `script/build-nub.mjs` aliases it for
+    // the compiled binary, because otherwise importing it kills the file.
+    if (specifier === "@opentui/solid/runtime-plugin-support/configure") {
+      return { url: new URL("./opentui-runtime-plugin-noop.ts", import.meta.url).href, shortCircuit: true }
+    }
+
     // Before node_modules, which is the precedence tsc and Bun both use: an
     // alias is meant to shadow a package of the same name, not lose to one.
     if (!specifier.startsWith(".") && !specifier.startsWith("/") && !specifier.includes(":")) {
@@ -368,7 +431,8 @@ registerHooks({
     // blocked hard enough that a timer set for 60s never fired. With this hook
     // removed the same import fails in under a second, which is what localised it.
     const path = fileURLToPath(url)
-    const source = readFileSync(path, "utf8")
+    let source = readFileSync(path, "utf8")
+    if (SPYABLE.some((suffix) => path.endsWith(suffix))) source = mutableNamespaces(source)
 
     // SolidJS JSX is a compile-to-renderer-ops pass, not a `jsx()` factory
     // rewrite, so esbuild cannot produce it — no jsxImportSource or jsx setting

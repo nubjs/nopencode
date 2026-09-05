@@ -27,6 +27,10 @@ import { globSync, mkdirSync, existsSync, statSync } from "node:fs"
 import { readFile, writeFile } from "node:fs/promises"
 import { dirname, resolve as resolvePath } from "node:path"
 import stringWidthPkg from "string-width"
+// The same implementation the `bun` module export serves: `Bun.$` and the
+// module's own `$` are one shell in Bun, and three files here reach it through
+// the global.
+import { $ as bunShell } from "./bun-module.ts"
 
 /**
  * Node's fetch refuses a ReadableStream body unless the caller also passes
@@ -238,6 +242,7 @@ const BunShim = {
   get env() {
     return process.env
   },
+  $: bunShell,
   /**
    * `Bun.Glob` over node's `fs.globSync`. Bun yields paths RELATIVE to the scan
    * root and node's glob does too when given `cwd`, so the shapes line up.
