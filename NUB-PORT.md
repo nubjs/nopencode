@@ -23,6 +23,8 @@ Verified from a foreign working directory, with the runtime cache cleared and a 
 | `--smol` | 21.6 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after. Needs `curl` or `wget` on the box — a slim image has neither, and nub says so rather than failing obscurely |
 | A model response | **not verified.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`). |
 
+The TUI row above has not been reproducible on the development machine since 2026-09-04. A binary built there that day starts, loads its config, and then exits with `Error: Unexpected error / An error occurred in Effect.tryPromise` before drawing a frame — from a clean working directory, under a fresh `HOME`, with `OPENCODE_PURE=1`, and with network reachable. It reproduces on a binary compiled from this branch's base commit, so it is not something the test migration introduced, and it reproduces with both the released `nub` and one built from `main`, so it is not a single `nub` build either. `--version` and `models` are correct on the same binary. Unresolved; the cause is not yet known.
+
 ### Measured against the Bun build
 
 darwin-arm64, hyperfine, 12 warm runs and 3 cold with the cache wiped between. Host was moderately loaded (~8 on 10 cores), so treat the absolutes as indicative and the ratios as the result.
@@ -288,7 +290,43 @@ A compiled binary already runs Node with `--experimental-ffi` (nub injects it on
 
 The suite is written against `bun:test`. `packages/nub-test` runs it on stock Node instead, and `bun test` is gone — every package's `test` script is a `node --test` invocation, and the shim's `bun` export condition, which had kept Bun's runner working as a control, went with it. `nub run test:all` runs every package in series and tallies.
 
-RESULTS_TABLE_PLACEHOLDER
+Every package, on one machine, measured the same way on both sides: Bun at the commit this branch starts from, running each package's own pre-migration `test` script; Node at this branch's head, through `nub run test:all`.
+
+| package | Bun | Node |
+| --- | --- | --- |
+| opencode | 3184 / 5 / 17 skipped | 2980 / 145 / 17 skipped |
+| core | 1080 / 0 | 938 / 114 |
+| app (test:unit) | 693 / 1 | 684 / 2 |
+| llm | 298 / 0 / 30 skipped | 298 / 0 / 30 skipped |
+| codemode | 263 / 0 | 263 / 0 |
+| tui | 168 / 5 / 1 skipped | 189 / 2 / 1 skipped |
+| session-ui | 76 / 0 | 76 / 0 |
+| desktop | 70 / 1 | 70 / 1 |
+| httpapi-codegen | 66 / 0 | 65 / 1 |
+| app (test:browser) | 41 / 0 | 41 / 0 |
+| http-recorder | 33 / 0 | 33 / 0 |
+| enterprise | 1 / 17 | 0 / 17 |
+| client | 15 / 1 | 15 / 1 |
+| console-core | 14 / 0 | 14 / 0 |
+| schema | 13 / 2 | 13 / 2 |
+| ui | 9 / 0 | 9 / 0 |
+| effect-drizzle-sqlite | 7 / 0 | 7 / 0 |
+| stats-core | 7 / 0 | 7 / 0 |
+| console-app | 5 / 2 | 5 / 2 |
+| cli | 3 / 0 | 3 / 0 |
+| protocol | 2 / 0 | 2 / 0 |
+| sdk-next | 1 / 4 | 1 / 4 |
+| sdk | 1 / 0 | 1 / 0 |
+| **total** | **6050 / 38 / 48 skipped** | **5714 / 291 / 48 skipped** |
+
+Read the Bun column as the target rather than as a pass mark: 38 of its own tests fail, and `cli`, `enterprise`, `protocol` and `stats-core` had no `test` script at all before this branch, so their files were unrunnable rather than passing. `tui` is the one package ahead of Bun.
+
+Seventeen of the twenty-three rows match Bun exactly. The remaining gap is concentrated in two packages and traces to four named things, not a long tail:
+
+- **`core/test/session-runner.test.ts`** — the largest single cluster, and unexplained. It is not the `#sqlite` condition (`bun test --conditions=node` runs the file 83/83) and not `node:test` itself (a runner-free driver fails it under Bun too, where `bun test` passes it). Both of those were plausible and both are wrong; the cause is still open.
+- **`spyOn` on a module namespace.** `export * as TuiConfig from "./tui"` yields a namespace object whose properties are non-configurable by specification, so Node throws `Cannot redefine property` where Bun relaxes the rule for mocking. No shim can bridge that — only rewriting those tests onto `mock.module` would.
+- **A partial `mock.module` factory**, described above.
+- **`packages/enterprise`**, which fails on both runners.
 
 Three flags every script carries:
 
@@ -301,14 +339,18 @@ Three flags every script carries:
 What the shim has to bridge, beyond renaming `beforeAll` to `before`:
 
 - **Extensionless and NodeNext imports.** Bun resolves `./agent` to `./agent.ts`, and `./plugin.js` to `plugin.ts`. Node does neither.
+- **tsconfig `paths`.** Six packages alias `@/*` or `~/*` to their own `src`. Bun applies the map; Node has no notion of one and reports `@/config` as a missing *package*, since it is a well-formed scoped name. This was the single largest gap — most of `packages/opencode` and `packages/app` could not load a file without it.
+- **Vite's `import.meta.env`**, which Bun provides as an alias for `process.env`, and `.css` side-effect imports.
 - **Non-erasable TypeScript.** Node strips types but refuses parameter properties and enums, so the load hook compiles with esbuild.
 - **Symlink canonicalisation.** Node keys its module cache on the resolved URL, so two spellings of one file are two modules. Under the workspace store one driver was instantiated 252 times and the resolver never terminated.
-- **SolidJS JSX**, a compile-to-renderer-ops pass rather than a `jsx()` factory rewrite — no esbuild setting produces it.
-- **`solid-js` resolving to its SSR build.** Both runtimes resolve it identically; OpenTUI's Bun plugin swaps in the client build, and the shim redirects to it in `resolve` so app code and the renderer share one module instance.
+- **SolidJS JSX**, a compile-to-renderer-ops pass rather than a `jsx()` factory rewrite — no esbuild setting produces it. Two renderers need two outputs, so `NUB_TEST_SOLID` names one: `universal` for OpenTUI, `dom` for the browser. Only `dom` compiles `node_modules`, because a DOM Solid library ships JSX source under the `solid` export condition precisely so its consumer compiles it — under `--conditions=solid`, `@kobalte/core`, `@solidjs/router` and `solid-sonner` all arrive as `.jsx`.
+- **`solid-js` resolving to its SSR build**, for the root package and for the `store` and `web` subpaths alike. Both runtimes resolve it identically; OpenTUI's Bun plugin swaps in the client build, and the shim redirects to it in `resolve` so app code and the renderer share one module instance.
 - **`mock.module` resolution.** `node:test` resolves a bare specifier against the immediate caller, which through the shim's wrapper is the shim itself — so mocking `@opentui/core` from a tui test failed naming a dependency of `packages/nub-test`. The shim resolves first and hands node an absolute URL. That has to go through `import.meta.resolve`, since the registered hooks apply to it and `createRequire` would return `solid-js`'s CJS entry and mock a second copy — a silent no-op rather than an error.
 - **Bun's own APIs** — the `Bun` global, `bun:sqlite`, the `$` shell, `with { type: "file" }` assets, and snapshots read from Bun's committed `.snap` files.
 
 Anything not implemented throws. A silently missing API turns a real assertion into a passing no-op, which is the one failure mode a migration like this must not have.
+
+One difference the shim does not bridge, and deliberately: a PARTIAL `mock.module` factory. Bun replaces the module and leaves a name the factory omitted as `undefined`; Node builds a synthetic module with exactly the factory's keys, so a third module that statically imports the omitted name fails to link. Filling the gaps would mean discovering the real module's export list synchronously, which `mock.module` has no way to do — and guessing it wrong would mock the wrong thing silently. One test file relies on the permissive reading.
 
 ### The one dependency this added
 
