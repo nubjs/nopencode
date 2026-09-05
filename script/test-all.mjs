@@ -57,7 +57,7 @@ for (const t of targets) {
   // A wall-clock cap per PACKAGE on top of node's per-TEST --test-timeout: a
   // file that wedges during its import graph never registers a test, so there is
   // nothing for the per-test timeout to fire on.
-  const out = spawnSync(command, { cwd: join(root, t.dir), shell: true, encoding: "utf8", timeout: 30 * 60_000 })
+  const out = spawnSync(command, { cwd: join(root, t.dir), shell: true, encoding: "utf8", timeout: 30 * 60_000, maxBuffer: 512 * 1024 * 1024 })
   const text = (out.stdout ?? "") + (out.stderr ?? "")
   const count = (key) => {
     // Every child process prints its own summary block; sum them.

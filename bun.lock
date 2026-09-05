@@ -14,7 +14,7 @@
       },
       "devDependencies": {
         "@actions/artifact": "5.0.1",
-        "@tsconfig/bun": "catalog:",
+        "@opencode-ai/nub-test": "workspace:*",
         "@types/mime-types": "3.0.1",
         "@typescript/native-preview": "catalog:",
         "glob": "13.0.5",
@@ -79,10 +79,10 @@
       },
       "devDependencies": {
         "@happy-dom/global-registrator": "20.0.11",
+        "@opencode-ai/nub-test": "workspace:*",
         "@playwright/test": "catalog:",
         "@sentry/vite-plugin": "catalog:",
         "@tailwindcss/vite": "catalog:",
-        "@tsconfig/bun": "1.0.9",
         "@types/bun": "catalog:",
         "@types/luxon": "catalog:",
         "@types/node": "catalog:",
@@ -113,8 +113,8 @@
         "solid-js": "catalog:",
       },
       "devDependencies": {
+        "@opencode-ai/nub-test": "workspace:*",
         "@opencode-ai/script": "workspace:*",
-        "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -131,7 +131,6 @@
         "@opencode-ai/httpapi-codegen": "workspace:*",
         "@opencode-ai/nub-test": "workspace:*",
         "@opencode-ai/server": "workspace:*",
-        "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
         "effect": "catalog:",
@@ -153,7 +152,6 @@
       },
       "devDependencies": {
         "@opencode-ai/nub-test": "workspace:*",
-        "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -251,7 +249,6 @@
       "dependencies": {
         "@jsx-email/all": "2.2.3",
         "@jsx-email/cli": "1.4.3",
-        "@tsconfig/bun": "1.0.9",
         "@types/react": "18.0.25",
         "react": "18.2.0",
         "solid-js": "catalog:",
@@ -372,7 +369,6 @@
         "@parcel/watcher-linux-x64-musl": "2.5.1",
         "@parcel/watcher-win32-arm64": "2.5.1",
         "@parcel/watcher-win32-x64": "2.5.1",
-        "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@types/cross-spawn": "catalog:",
         "@types/node": "catalog:",
@@ -448,7 +444,7 @@
       },
       "devDependencies": {
         "@effect/sql-sqlite-bun": "catalog:",
-        "@tsconfig/bun": "catalog:",
+        "@opencode-ai/nub-test": "workspace:*",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -460,7 +456,6 @@
         "effect": "catalog:",
       },
       "devDependencies": {
-        "@tsconfig/bun": "catalog:",
         "@types/node": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -477,6 +472,7 @@
         "@solidjs/meta": "catalog:",
         "@solidjs/router": "catalog:",
         "@solidjs/start": "catalog:",
+        "@standard-community/standard-openapi": "0.2.9",
         "aws4fetch": "^1.0.20",
         "hono": "catalog:",
         "hono-openapi": "catalog:",
@@ -488,6 +484,7 @@
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
+        "@opencode-ai/nub-test": "workspace:*",
         "@tailwindcss/vite": "catalog:",
         "@types/bun": "catalog:",
         "@types/luxon": "catalog:",
@@ -521,6 +518,7 @@
         "@effect/platform-node-shared": "4.0.0-beta.83",
       },
       "devDependencies": {
+        "@opencode-ai/nub-test": "workspace:*",
         "@tsconfig/node22": "catalog:",
         "@types/bun": "catalog:",
         "@types/node": "catalog:",
@@ -539,7 +537,7 @@
         "prettier": "3.6.2",
       },
       "devDependencies": {
-        "@tsconfig/bun": "catalog:",
+        "@opencode-ai/nub-test": "workspace:*",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -559,7 +557,6 @@
         "@effect/platform-node": "catalog:",
         "@opencode-ai/http-recorder": "workspace:*",
         "@opencode-ai/nub-test": "workspace:*",
-        "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -690,9 +687,9 @@
         "@octokit/webhooks-types": "7.6.1",
         "@opencode-ai/core": "workspace:*",
         "@opencode-ai/http-recorder": "workspace:*",
+        "@opencode-ai/nub-test": "workspace:*",
         "@opencode-ai/script": "workspace:*",
         "@standard-schema/spec": "1.0.0",
-        "@tsconfig/bun": "catalog:",
         "@types/babel__core": "7.20.5",
         "@types/bun": "catalog:",
         "@types/cross-spawn": "catalog:",
@@ -746,7 +743,7 @@
         "effect": "catalog:",
       },
       "devDependencies": {
-        "@tsconfig/bun": "catalog:",
+        "@opencode-ai/nub-test": "workspace:*",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -758,7 +755,6 @@
       },
       "devDependencies": {
         "@opencode-ai/nub-test": "workspace:*",
-        "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -782,7 +778,7 @@
         "effect": "catalog:",
       },
       "devDependencies": {
-        "@tsconfig/bun": "catalog:",
+        "@opencode-ai/nub-test": "workspace:*",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -795,6 +791,7 @@
       },
       "devDependencies": {
         "@hey-api/openapi-ts": "0.90.10",
+        "@opencode-ai/nub-test": "workspace:*",
         "@tsconfig/node22": "catalog:",
         "@types/cross-spawn": "catalog:",
         "@types/node": "catalog:",
@@ -812,7 +809,6 @@
         "effect": "catalog:",
       },
       "devDependencies": {
-        "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -920,6 +916,7 @@
         "sst": "catalog:",
       },
       "devDependencies": {
+        "@opencode-ai/nub-test": "workspace:*",
         "@tsconfig/node22": "catalog:",
         "@types/bun": "catalog:",
         "@types/node": "catalog:",
@@ -993,7 +990,6 @@
       },
       "devDependencies": {
         "@opencode-ai/nub-test": "workspace:*",
-        "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
       },
@@ -1030,6 +1026,7 @@
         "strip-ansi": "7.1.2",
       },
       "devDependencies": {
+        "@opencode-ai/nub-test": "workspace:*",
         "@solidjs/meta": "catalog:",
         "@tailwindcss/vite": "catalog:",
         "@tsconfig/node22": "catalog:",
@@ -1099,6 +1096,7 @@
     "@ai-sdk/xai@3.0.102": "patches/@ai-sdk%2Fxai@3.0.102.patch",
     "@modelcontextprotocol/sdk@1.29.0": "patches/@modelcontextprotocol%2Fsdk@1.29.0.patch",
     "gcp-metadata@8.1.2": "patches/gcp-metadata@8.1.2.patch",
+    "@ff-labs/fff-bun@0.9.4": "patches/@ff-labs%2Ffff-bun@0.9.4.patch",
     "@standard-community/standard-openapi@0.2.9": "patches/@standard-community%2Fstandard-openapi@0.2.9.patch",
     "effect@4.0.0-beta.83": "patches/effect@4.0.0-beta.83.patch",
     "@ai-sdk/mistral@3.0.51": "patches/@ai-sdk%2Fmistral@3.0.51.patch",
@@ -1144,7 +1142,6 @@
     "@solidjs/start": "https://pkg.pr.new/@solidjs/start@dfb2020",
     "@tailwindcss/vite": "4.1.11",
     "@tanstack/solid-virtual": "3.13.32",
-    "@tsconfig/bun": "1.0.9",
     "@tsconfig/node22": "22.0.2",
     "@types/bun": "1.3.13",
     "@types/cross-spawn": "6.0.6",
@@ -2833,8 +2830,6 @@
     "@testing-library/user-event": ["@testing-library/user-event@14.6.1", "", { "peerDependencies": { "@testing-library/dom": ">=7.21.4" } }, "sha512-vq7fv0rnt+QTXgPxr5Hjc210p6YKq2kmdziLgnsZGgLJ9e6VAShx1pACLuRjd/AS/sr7phAR58OIIpf0LlmQNw=="],
 
     "@thisbeyond/solid-dnd": ["@thisbeyond/solid-dnd@0.7.5", "", { "peerDependencies": { "solid-js": "^1.5" } }, "sha512-DfI5ff+yYGpK9M21LhYwIPlbP2msKxN2ARwuu6GF8tT1GgNVDTI8VCQvH4TJFoVApP9d44izmAcTh/iTCH2UUw=="],
-
-    "@tsconfig/bun": ["@tsconfig/bun@1.0.9", "", {}, "sha512-4M0/Ivfwcpz325z6CwSifOBZYji3DFOEpY6zEUt0+Xi2qRhzwvmqQN9XAHJh3OVvRJuAqVTLU2abdCplvp6mwQ=="],
 
     "@tsconfig/node22": ["@tsconfig/node22@22.0.2", "", {}, "sha512-Kmwj4u8sDRDrMYRoN9FDEcXD8UpBSaPQQ24Gz+Gamqfm7xxn+GBR7ge/Z7pK8OXNGyUzbSwJj+TH6B+DS/epyA=="],
 

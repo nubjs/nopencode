@@ -22,6 +22,7 @@ import {
 import { expect as jestExpect } from "expect"
 import { existsSync, readFileSync } from "node:fs"
 import { basename, dirname } from "node:path"
+import { pathToFileURL } from "node:url"
 
 /**
  * Bun's `expect` carries matchers Jest's does not. Counted across the suite:
@@ -340,6 +341,45 @@ export function mock(impl?: (...args: any[]) => any): MockFn {
 /** Bun spells it `restore`; node:test spells it `restoreAll`. */
 mock.restore = () => nodeMock.restoreAll()
 
+/**
+ * Resolve a specifier as the CALLING test file would.
+ *
+ * `node:test`'s `mock.module` resolves a bare specifier against the immediate
+ * caller's file — which, through this wrapper, is `index.ts`. So mocking
+ * `@opentui/core` from a tui test failed with "Cannot find package
+ * '@opentui/core' imported from packages/nub-test/index.ts": a dependency of
+ * the test's package, not of the shim's.
+ *
+ * Handing node an already-resolved absolute URL sidesteps the parent entirely.
+ * The resolution has to run through `import.meta.resolve`, not `createRequire`:
+ * the registered hooks apply to the former, so `solid-js` comes back as the
+ * client build the resolve hook redirects to and matches the instance the test
+ * actually imports. `createRequire` returns the CJS entry and would mock a
+ * second copy — a silent no-op rather than an error.
+ */
+function resolveFromCaller(specifier: string): string {
+  if (specifier.startsWith("node:") || specifier.startsWith("file:")) return specifier
+  const previous = Error.prepareStackTrace
+  Error.prepareStackTrace = (_, frames) => frames
+  const frames = new Error().stack as unknown as { getFileName(): string | undefined }[]
+  Error.prepareStackTrace = previous
+  const shim = import.meta.url
+  for (const frame of frames ?? []) {
+    const file = frame.getFileName?.()
+    if (!file || file === shim || file.startsWith("node:")) continue
+    const parent = file.startsWith("file:") ? file : pathToFileURL(file).href
+    try {
+      return import.meta.resolve(specifier, parent)
+    } catch {
+      // The two-argument form needs --experimental-import-meta-resolve; without
+      // it node ignores the parent and throws. Fall through to the raw
+      // specifier, which still works whenever the shim's own package can see it.
+      return specifier
+    }
+  }
+  return specifier
+}
+
 mock.module = (specifier: string, factory?: () => any) => {
   const nodeModuleMock = (nodeMock as unknown as { module?: Function }).module
   if (typeof nodeModuleMock !== "function") {
@@ -352,7 +392,7 @@ mock.module = (specifier: string, factory?: () => any) => {
   // exports and the default separated, so unpack rather than pass it through.
   const replacement = factory?.() ?? {}
   const { default: defaultExport, ...namedExports } = replacement
-  return (nodeMock as any).module(specifier, {
+  return (nodeMock as any).module(resolveFromCaller(specifier), {
     namedExports,
     ...(defaultExport === undefined ? {} : { defaultExport }),
   })
