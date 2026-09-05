@@ -332,7 +332,7 @@ Counted against the merge of `nub-compile` and `dev`:
 
 What is left, and why each stays:
 
-- **The `Bun` global**, through `packages/opencode/src/nub/bun-compat.ts`. 38 call sites in the compiled graph, 25 of them `Bun.stringWidth`. Rewriting each to a direct import would churn upstream source for no behavioural gain — the polyfill is the sanctioned mechanism.
+- **The `Bun` global**, through `packages/opencode/src/nub/bun-compat.ts`. 32 call sites in the compiled graph outside the shim itself, 25 of them `Bun.stringWidth`. Rewriting each to a direct import would churn upstream source for no behavioural gain — the polyfill is the sanctioned mechanism.
 - **`sqlite.bun.ts`, `pty.bun.ts`, `fff.bun.ts`** — the `bun` arms of opencode's own conditional exports. The nub build selects the `node` siblings; upstream keeps both.
 - **34 package.json scripts**, and they are the ones whose body calls a Bun API: `Bun.build` in the per-package build scripts, `Bun.spawn` / `Bun.Glob` in the repo tooling. Those ARE the Bun build path, which `script/build-nub.mjs` replaces rather than reimplements, so pointing them at nub would break them for nothing. `bun sst shell` stays too, since it wraps a second command in an SST environment.
 - **`@types/bun` in 20 packages** that still name `Bun` somewhere. One of those names is type-only: `packages/opencode/src/session/message-v2.ts` imports `type { SystemError } from "bun"`, which is erased at build time and reaches no runtime.
