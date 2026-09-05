@@ -19,14 +19,13 @@
  * does not re-walk the tree.
  */
 import { spawnSync } from "node:child_process"
-import { stage as stageOtuiAssets } from "./stage-otui-assets.mjs"
-import { existsSync, readdirSync } from "node:fs"
+import { packageDir, stage as stageOtuiAssets } from "./stage-otui-assets.mjs"
+import { existsSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const repo = path.resolve(dir, "../..")
-const modules = path.join(repo, "node_modules/.bun")
 
 const NUB = process.env.NUB ?? "nub"
 const MODELS = process.env.OPENCODE_MODELS_JSON ?? "/tmp/oc-models.json"
@@ -40,13 +39,15 @@ const version = process.env.OPENCODE_VERSION ?? "0.0.0-nub"
 const platform = process.env.PLATFORM ?? `${process.platform}-${process.arch}`
 const [targetOs, , targetLibc] = platform.split("-")
 
-/** Resolve a package inside bun's isolated store, whose dirs carry a content hash. */
-function pkg(name, subpath = "") {
-  const flat = name.replace("/", "+")
-  const hit = readdirSync(modules).find((d) => d === flat || d.startsWith(`${flat}@`))
-  if (!hit) throw new Error(`not installed: ${name}`)
-  return path.join(modules, hit, "node_modules", name, subpath)
-}
+/**
+ * Resolve a package directory whatever laid out node_modules.
+ *
+ * Shared with the asset staging rather than duplicated, because the two used to
+ * disagree: this one read `node_modules/.bun` directly, so the build worked
+ * after `bun install` and failed after `nub install` — which links packages into
+ * each workspace member and keeps its store somewhere else entirely.
+ */
+const pkg = (name, subpath = "") => path.join(packageDir(name), subpath)
 
 const solid = pkg("solid-js")
 

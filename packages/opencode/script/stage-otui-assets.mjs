@@ -28,7 +28,7 @@ const repo = path.resolve(dir, "../..")
  * one path that would tell us where they live. Their layout is not in question
  * — walk to it.
  */
-function packageDir(name) {
+export function packageDir(name) {
   const seen = []
   const bases = [path.join(dir, "node_modules"), path.join(repo, "node_modules")]
   const core = path.join(dir, "node_modules/@opentui/core")
