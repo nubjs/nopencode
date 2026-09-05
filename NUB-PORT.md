@@ -58,6 +58,27 @@ darwin-arm64, hyperfine, 12 warm runs and 3 cold with the cache wiped between. H
 
 The on-disk column is the misleading one and should never be quoted alone: nub's binary barely compresses because the embedded Node is already zstd-19, while Bun's compresses 3x because it is stored uncompressed. What you actually ship is the compressed size, and there Bun wins — 33.6 MB against 44.4 MB. `--smol` is the only shape that beats it, at 17.4 MB, because it carries no runtime at all.
 
+### Time to first frame goes the other way
+
+Startup as measured above is `--version`: exec, runtime init, a small module graph, print, exit. It is not what a user waits for. Time to the first painted TUI frame is, and it does not follow the startup row.
+
+Measured under a pty, nine alternating pairs, medians, fresh temp directory per run. `first_byte` is process start through to the first output; `first_paint` is the first 24-bit SGR sequence, which is the first byte of real screen content rather than of the terminal capability prologue.
+
+| | `first_byte` | `first_paint` | paired wins |
+| --- | --- | --- | --- |
+| this build (v1.18.11 + port, nub) | **572 ms** | **2604 ms** | 9/9 |
+| released opencode v1.18.29 (Bun) | 1114 ms | 3068 ms | |
+
+The same shape holds with both binaries pointed at one empty `HOME`: 2691 ms against 3079 ms, 8 of 9 pairs. **So this build is roughly 400 ms slower to print `--version` and roughly 460 ms faster to draw a frame.** Both are true, because they time different work — runtime boot is a few hundred milliseconds of a three-second first frame, and everything else is application work.
+
+Read it as a comparison of two *builds*, not of two runtimes. The two differ in more than the compiler:
+
+- **Version.** v1.18.11 + this port against v1.18.29 — 397 upstream commits, 805 files, +99359/−10454. A newer opencode does more before it paints.
+- **Payload.** `script/build.ts` embeds the web UI through `opencode-web-ui.gen.ts`; `script/build-nub.mjs` aliases that specifier to an empty module. This build carries less JavaScript.
+- **Bytecode.** `script/build.ts` passes no `--bytecode`, so Bun parses from source on every start. The nub artifact ships no code cache in its SEA blob either, but Node's on-disk compile cache covers the app chunks and the loader turns it on.
+
+Two candidate causes were tested and neither carries the result. A copy of the 28.4 MB release database costs this build 125 ms against its own 311 KB one — 1.05x, where the gap is 460 ms. Emptying the compile cache before every run costs 197 ms of `first_byte` and 136 ms of `first_paint` — about a third of the `first_byte` gap, and the build is still ahead with the cache cold. The remainder is version and payload, which this pair of binaries cannot separate.
+
 ### musl needs `OPENTUI_LIBC` set explicitly
 
 Only musl surfaced this, and it failed hard rather than subtly: the TUI died with `Missing OpenTUI asset "@opentui/core-linux-arm64/libopentui.so"` — the **glibc** package's key — on a musl binary that had the musl library staged beside it.
