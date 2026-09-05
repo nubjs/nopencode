@@ -54,9 +54,11 @@ darwin-arm64, hyperfine, 12 warm runs and 3 cold with the cache wiped between. H
 | nub, embed | 772 ms | 4.90 s | 45.3 MB | 44.4 MB |
 | nub, `--smol` | 822 ms | 3.20 s | **18.3 MB** | **17.4 MB** |
 
-**Bun is about 2.1x faster to start, and smaller to ship.** Its binary *is* the runtime; nub's launcher spawns Node as a child, paying two process starts plus Node's own init, and on a first run also pays extraction.
+**That table is superseded and both of its nub rows are now wrong.** Re-measured 2026-09-05 against the same binary shape, warm startup is 425 ms, not 772, and cold is 2.3 s, not 4.9 — nub roughly halved both while this branch sat still. The Bun column cannot be refreshed: this branch's source no longer builds under Bun at all, because four files import `node:sqlite` and Bun has no such builtin. So the like-for-like comparison the table records is a historical measurement, not something reproducible today.
 
-The on-disk column is the misleading one and should never be quoted alone: nub's binary barely compresses because the embedded Node is already zstd-19, while Bun's compresses 3x because it is stored uncompressed. What you actually ship is the compressed size, and there Bun wins — 33.6 MB against 44.4 MB. `--smol` is the only shape that beats it, at 17.4 MB, because it carries no runtime at all.
+The explanation attached to it was also wrong. It said nub's launcher "spawns Node as a child, paying two process starts". A `nub compile` artifact of a one-line program starts in **38.2 ms ± 6.9**, against **42.0 ms ± 4.8** for `node -e ''` on the same host — indistinguishable, and no room for a second process start. Whatever this build spends, it does not spend on the launcher.
+
+The size half of the table stands, and its warning is the part to keep. The on-disk column is the misleading one and should never be quoted alone: nub's binary barely compresses because the embedded Node is already zstd-19, while Bun's compresses 3x because it is stored uncompressed. What you actually ship is the compressed size, and there Bun wins — 33.6 MB against 44.4 MB. `--smol` is the only shape that beats it, at 17.4 MB, because it carries no runtime at all.
 
 ### Time to first frame goes the other way
 
@@ -71,7 +73,9 @@ Both binaries were captured with `script/nub-pty-screen.py` first, to confirm th
 | this build (v1.18.11 + port, nub) | **572 ms** | **2604 ms** | 9/9 |
 | released opencode v1.18.29 (Bun) | 1114 ms | 3068 ms | |
 
-The same shape holds with both binaries pointed at one empty `HOME`: 2691 ms against 3079 ms, 8 of 9 pairs. **So this build is roughly 400 ms slower to print `--version` and roughly 460 ms faster to draw a frame.** Both are true, because they time different work — runtime boot is a few hundred milliseconds of a three-second first frame, and everything else is application work.
+The same shape holds with both binaries pointed at one empty `HOME`: 2691 ms against 3079 ms, 8 of 9 pairs.
+
+The `--version` row above it is stale, and re-measuring changed the conclusion rather than sharpening it. On an alternating timer — 25 runs, arms interleaved — this build prints `--version` in 654.8 ms against the release's 665.1 ms, and comes out lower in 11 of 25 paired runs. That is a coin flip, not the 2.1x deficit the table claims. A separate six-pair run on a quieter host reads 425.5 ms against 478.1 ms. **Warm, the two are level; cold, this build pays 2.4 s the release does not.** The cold number is the real one to attack, and it is extraction, not startup: 108 MB unpacked on first run.
 
 Read it as a comparison of two *builds*, not of two runtimes. The two differ in more than the compiler:
 
