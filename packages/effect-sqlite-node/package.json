@@ -12,7 +12,6 @@
     ".": "./src/index.ts"
   },
   "devDependencies": {
-    "@tsconfig/bun": "catalog:",
     "@types/node": "catalog:",
     "@typescript/native-preview": "catalog:"
   },

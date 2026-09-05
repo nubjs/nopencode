@@ -40,7 +40,6 @@
     }
   },
   "devDependencies": {
-    "@tsconfig/bun": "catalog:",
     "@types/bun": "catalog:",
     "@types/cross-spawn": "catalog:",
     "@types/node": "catalog:",

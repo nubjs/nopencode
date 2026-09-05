@@ -15,7 +15,6 @@
     "prettier": "3.6.2"
   },
   "devDependencies": {
-    "@tsconfig/bun": "catalog:",
     "@types/bun": "catalog:",
     "@typescript/native-preview": "catalog:"
   }

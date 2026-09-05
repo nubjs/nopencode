@@ -35,7 +35,6 @@
     "@playwright/test": "catalog:",
     "@sentry/vite-plugin": "catalog:",
     "@tailwindcss/vite": "catalog:",
-    "@tsconfig/bun": "1.0.9",
     "@types/bun": "catalog:",
     "@types/luxon": "catalog:",
     "@types/node": "catalog:",

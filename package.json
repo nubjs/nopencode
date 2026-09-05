@@ -52,7 +52,6 @@
       "@types/node": "24.12.2",
       "@types/semver": "7.7.1",
       "@tsconfig/node22": "22.0.2",
-      "@tsconfig/bun": "1.0.9",
       "@cloudflare/workers-types": "4.20251008.0",
       "@openauthjs/openauth": "0.0.0-20250322224806",
       "@pierre/diffs": "1.2.10",
@@ -97,7 +96,6 @@
   },
   "devDependencies": {
     "@actions/artifact": "5.0.1",
-    "@tsconfig/bun": "catalog:",
     "@types/mime-types": "3.0.1",
     "@typescript/native-preview": "catalog:",
     "glob": "13.0.5",
