@@ -40,15 +40,21 @@ What is left is cold start, and it is not startup at all — it is extraction. S
 
 The size half of the table stands, and its warning is the part to keep. The on-disk column is the misleading one and should never be quoted alone: nub's binary barely compresses because the embedded Node is already zstd-19, while Bun's compresses 3x because it is stored uncompressed. What you actually ship is the compressed size, and there Bun wins — 33.6 MB against 44.4 MB. `--smol` is the only shape that beats it, at 17.4 MB, because it carries no runtime at all.
 
-### Cold start is extraction, and a types-only peer was a fifth of it
+### Cold start is extraction, and a types-only peer is a fifth of the payload
 
-The first run of a compiled artifact unpacks its payload; every run after that finds it already there. That first run costs about 2.4 s here, and warm runs cost 0.4 s, so essentially the whole cold-start gap against Bun — whose binary carries no payload to unpack — is this one step.
+The first run of a compiled artifact unpacks its payload; every run after that finds it already there. That first run is where essentially the whole cold-start gap lives, since a Bun binary carries no payload to unpack.
 
-The payload was 108 MB across 2813 files. **23 MB of it was the TypeScript compiler**, shipped inside `@opentui/core/node_modules/typescript` and never loaded by anything.
+Most of that cost turned out to be in the launcher rather than in this tree, and it is fixed upstream: sealing the extracted cache flushed every file serially, and `File::sync_all` is `fcntl(F_FULLFSYNC)` on macOS — a full device barrier per file. Flushing concurrently took a cold run from about 2.8 s to about 1.0 s. Nothing in this repo had to change for it.
 
-It arrives through a declaration, not an import. `bun-ffi-structs` names `typescript` in `peerDependencies`, and `nub compile` walks `dependencies`, `optionalDependencies` and `peerDependencies` transitively for every package it ships unbundled — deliberately, because such a package runs from real files and resolves its peers by walking up like any other require. Omitting one would ship a package that fails at run time on a module its own manifest named.
+What is left is the payload's own size: 108 MB across 2813 files, of which **23 MB is the TypeScript compiler**, shipped inside `@opentui/core/node_modules/typescript` and never loaded by anything.
 
-Here the peer is types-only. `bun-ffi-structs` publishes `files: ["dist"]`, and its `dist/index.js` contains no occurrence of the string `typescript`; OpenTUI has also already inlined that package into its own `chunk-node-*.js`, so the directory is not on the Node arm's load path at all. `patches/bun-ffi-structs@0.2.4.patch` drops the peer.
+It arrives through a declaration, not an import. `bun-ffi-structs` names `typescript` in `peerDependencies`, and `nub compile` walks `dependencies`, `optionalDependencies` and `peerDependencies` transitively for every package it ships unbundled — deliberately, because such a package runs from real files and resolves its peers by walking up like any other require. Omitting one would ship a package that fails at run time on a module its own manifest named. Bun's isolated layout is what makes the walk find this one: `bun install` materializes the peer as a sibling inside the dependent's own store entry, so `node_modules/.bun/bun-ffi-structs@0.2.4+…/node_modules/` holds `typescript` next to `bun-ffi-structs`.
+
+Here the peer is types-only. `bun-ffi-structs` publishes `files: ["dist"]`, and its `dist/index.js` contains no occurrence of the string `typescript`; OpenTUI has also already inlined that package into its own `chunk-node-*.js`, so the directory is not on the Node arm's load path at all.
+
+**Dropping the peer with a patch was measured and then reverted.** It works, and the numbers below are real, but it is a local workaround for a `nub compile` limitation: patching it out here would make this tree's artifact smaller without making the tool that produced it any better, and it would flatter any comparison drawn against a build that never had the handicap. The 23 MB stays until `nub compile` stops following a peer nothing imports.
+
+That fix is not a one-liner. The obvious form — follow a peer only when the package's own code names it — never fires here, because `bun-ffi-structs/dist/index.js` contains `import(specifier)`; the closure scanner treats a call with a computed argument as "cannot answer" and abandons the verdict for the whole package, so every declaration stays reachable. Making it fire means changing that all-or-nothing verdict, which governs bundling decisions well beyond peers.
 
 Measured against a control built from this same tree with the patch removed and the store entry deleted so `bun install` genuinely re-extracts it — without that deletion the "control" silently reuses the patched copy and comes out byte-identical:
 
@@ -57,7 +63,7 @@ Measured against a control built from this same tree with the patch removed and 
 | control | 108 MB | 2813 | 46.36 MB | 2658 ms |
 | patched | **86 MB** | **2684** | **43.06 MB** | **2448 ms** |
 
-Nine alternating pairs, medians; the patched build was faster in 7 of 9. Warm startup and the TUI are unchanged — the frame renders, `models` still lists 32 providers.
+Nine alternating pairs, medians; the patched build was faster in 7 of 9. Warm startup and the TUI are unchanged — the frame renders, `models` still lists 32 providers. Both cold figures were taken before the launcher fix above and are now roughly a second higher than the same builds would measure today; the ratio between them is the part that still holds.
 
 Note the shape of that result: 20% fewer bytes bought 8% less time, while the file count fell only 5%. Extraction is closer to per-file than per-byte, which is worth knowing before chasing further megabytes.
 
