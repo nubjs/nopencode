@@ -325,7 +325,7 @@ Counted against the merge of `nub-compile` and `dev`:
 | | before | after |
 | --- | --- | --- |
 | files importing `bun:test` | 396 | **0** |
-| package.json scripts invoking `bun` or `bunx` | 74 | 34 |
+| package.json scripts invoking `bun` or `bunx` | 63 | 24 |
 | packages depending on `@types/bun` | 28 | 20 |
 | packages depending on `@tsconfig/bun` | 17 | **0** |
 | other `bun:*` imports | 3 | 3 |
@@ -334,7 +334,7 @@ What is left, and why each stays:
 
 - **The `Bun` global**, through `packages/opencode/src/nub/bun-compat.ts`. 32 call sites in the compiled graph outside the shim itself, 25 of them `Bun.stringWidth`. Rewriting each to a direct import would churn upstream source for no behavioural gain — the polyfill is the sanctioned mechanism.
 - **`sqlite.bun.ts`, `pty.bun.ts`, `fff.bun.ts`** — the `bun` arms of opencode's own conditional exports. The nub build selects the `node` siblings; upstream keeps both.
-- **34 package.json scripts**, and they are the ones whose body calls a Bun API: `Bun.build` in the per-package build scripts, `Bun.spawn` / `Bun.Glob` in the repo tooling. Those ARE the Bun build path, which `script/build-nub.mjs` replaces rather than reimplements, so pointing them at nub would break them for nothing. `bun sst shell` stays too, since it wraps a second command in an SST environment.
+- **24 package.json scripts**, and they are the ones whose body calls a Bun API: `Bun.build` in the per-package build scripts, `Bun.spawn` / `Bun.Glob` in the repo tooling. Those ARE the Bun build path, which `script/build-nub.mjs` replaces rather than reimplements, so pointing them at nub would break them for nothing. `bun sst shell` stays too, since it wraps a second command in an SST environment.
 - **`@types/bun` in 20 packages** that still name `Bun` somewhere. One of those names is type-only: `packages/opencode/src/session/message-v2.ts` imports `type { SystemError } from "bun"`, which is erased at build time and reaches no runtime.
 - **17 test files importing `{ $ } from "bun"`** for the shell API. Those run on Node: the shim's resolve hook points the `bun` specifier at its own `bun-module.ts`.
-- **`bun.lock` and `packageManager: bun@1.3.14`.** `nub install` reads that lockfile and installs from it; nothing here writes a second one.
+- **`bun.lock` and `packageManager: bun@1.3.14`.** `nub install` installs from the tree as it stands and leaves `bun.lock` byte-unchanged, writing no lockfile of its own, so the two package managers share the one file.
