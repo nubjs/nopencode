@@ -21,6 +21,7 @@
  */
 import { registerHooks } from "node:module"
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs"
+import { dirname, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { transformSync } from "esbuild"
 import { transformSync as babelTransformSync } from "@babel/core"
@@ -33,10 +34,16 @@ import "./bun-global.ts"
 /** Tried in order, matching what a Bun-authored relative import can mean. */
 const CANDIDATES = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]
 const TS = /\.[cm]?tsx?$/
-const TEXT_ASSET = /\.(txt|sql|prompt|md)$/
-/** solid-js's and solid-js/store's SSR builds — see the redirect in `resolve`. */
-const SOLID_SSR = /\/node_modules\/solid-js\/(store\/)?dist\/server\.js$/
-const SOLID_STORE = /\/solid-js\/store\/dist\/server\.js$/
+const TEXT_ASSET = /\.(txt|sql|prompt|md|css)$/
+/**
+ * The SSR build of solid-js and of its two subpath entries — see the redirect in
+ * `resolve`. Each ships its client build beside `server.js` under a different
+ * name, so the captured subpath names the replacement.
+ */
+const SOLID_SSR = /\/node_modules\/solid-js\/(?:(store|web)\/)?dist\/server\.js$/
+const SOLID_CLIENT: Record<string, string> = { "": "solid.js", store: "store.js", web: "web.js" }
+/** "universal" for OpenTUI, "dom" for the browser renderer — see the load hook. */
+const SOLID_MODE = process.env["NUB_TEST_SOLID"]
 
 /**
  * Resolve symlinks before handing a URL back.
@@ -50,6 +57,166 @@ const SOLID_STORE = /\/solid-js\/store\/dist\/server\.js$/
  */
 function canonical(path: string): string {
   return pathToFileURL(realpathSync(path)).href
+}
+
+/**
+ * Accept `path` as written, or with any extension a Bun-authored import can omit.
+ *
+ * Shared by the relative resolver and the tsconfig-paths one because both mean
+ * the same thing by "this file": the extension sweep, then a directory's index.
+ *
+ * `exact` is off for relative imports, and that is load-bearing rather than an
+ * optimisation. A path may arrive carrying a query — `./config.ts?channel=beta`
+ * is how one suite asks for three independent instances of one module — and
+ * accepting the bare file here would canonicalise the query away and hand all
+ * three the same instance. Node keys on the full URL, so leaving those to it
+ * keeps them distinct.
+ */
+function tryCandidates(path: string, exact = false): string | null {
+  if (exact && existsSync(path) && statSync(path).isFile()) return canonical(path)
+  for (const ext of CANDIDATES) {
+    if (existsSync(path + ext)) return canonical(path + ext)
+  }
+  if (existsSync(path) && statSync(path).isDirectory()) {
+    for (const ext of CANDIDATES) {
+      if (existsSync(`${path}/index${ext}`)) return canonical(`${path}/index${ext}`)
+    }
+  }
+  return null
+}
+
+/**
+ * Parse a tsconfig, which is JSONC.
+ *
+ * Comment stripping has to be string-aware rather than a regex: every tsconfig
+ * here opens with a `"$schema": "https://…"` whose `//` a naive strip would eat,
+ * taking the rest of the line — and the file — with it.
+ */
+function parseJsonc(text: string): unknown {
+  let out = ""
+  const commas: number[] = []
+  let inString = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]!
+    const d = text[i + 1]
+    if (inString) {
+      out += c
+      if (c === "\\") out += text[++i] ?? ""
+      else if (c === '"') inString = false
+      continue
+    }
+    if (c === '"') {
+      inString = true
+      out += c
+      continue
+    }
+    if (c === "/" && d === "/") {
+      while (i < text.length && text[i] !== "\n") i++
+      out += "\n"
+      continue
+    }
+    if (c === "/" && d === "*") {
+      i += 2
+      while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) i++
+      i++
+      continue
+    }
+    if (c === ",") commas.push(out.length)
+    out += c
+  }
+  // Trailing commas, dropped only at the recorded positions — a comma inside a
+  // string is never a candidate, so no path value can be corrupted by this.
+  let cleaned = ""
+  let cursor = 0
+  for (const at of commas) {
+    let j = at + 1
+    while (j < out.length && /\s/.test(out[j]!)) j++
+    if (out[j] !== "}" && out[j] !== "]") continue
+    cleaned += out.slice(cursor, at)
+    cursor = at + 1
+  }
+  return JSON.parse(cleaned + out.slice(cursor))
+}
+
+type PathMap = { base: string; paths: Record<string, string[]> }
+const TSCONFIG_PATHS = new Map<string, PathMap | null>()
+
+/**
+ * The `compilerOptions.paths` map governing a file, or null.
+ *
+ * Bun applies tsconfig path aliases; Node has no notion of them, which is what
+ * `@/config` and `~/util` fail on — node reports them as a missing PACKAGE,
+ * since `@/config` is a well-formed scoped name. Six tsconfigs in this workspace
+ * declare a map, and the packages behind them are most of the suite.
+ *
+ * Nearest config wins and the walk stops there, matching how tsc is actually
+ * invoked: one config governs a project. The `extends` chain is not chased —
+ * every map here is declared locally, and a base config that added one would
+ * apply to packages that never opted in.
+ *
+ * Targets resolve against the config's own directory, which is what TypeScript
+ * does when `baseUrl` is absent (allowed since 4.1, and none of these set one).
+ */
+function nearestPaths(fromDir: string): PathMap | null {
+  const cached = TSCONFIG_PATHS.get(fromDir)
+  if (cached !== undefined) return cached
+  let found: PathMap | null = null
+  let dir = fromDir
+  while (dir !== dirname(dir)) {
+    const file = join(dir, "tsconfig.json")
+    if (existsSync(file)) {
+      try {
+        const config = parseJsonc(readFileSync(file, "utf8")) as {
+          compilerOptions?: { paths?: Record<string, string[]>; baseUrl?: string }
+        }
+        const paths = config.compilerOptions?.paths
+        // A config with no map still ENDS the walk: it is this project's config,
+        // and an ancestor's aliases are not in scope for it.
+        if (paths) found = { base: resolve(dir, config.compilerOptions?.baseUrl ?? "."), paths }
+      } catch {
+        // A config we cannot read is not a resolution error — leave the
+        // specifier to node and let it report the honest failure.
+      }
+      break
+    }
+    dir = dirname(dir)
+  }
+  TSCONFIG_PATHS.set(fromDir, found)
+  return found
+}
+
+function resolveTsconfigPaths(specifier: string, parentURL: string | undefined): string | null {
+  if (!parentURL?.startsWith("file:")) return null
+  const map = nearestPaths(dirname(fileURLToPath(parentURL)))
+  if (!map) return null
+
+  // TypeScript's own precedence: an exact key beats a wildcard, and among
+  // wildcards the longest literal prefix wins.
+  let best: { targets: string[]; captured: string } | null = null
+  let bestPrefix = -1
+  for (const [key, targets] of Object.entries(map.paths)) {
+    const star = key.indexOf("*")
+    if (star === -1) {
+      if (key === specifier) {
+        best = { targets, captured: "" }
+        break
+      }
+      continue
+    }
+    const prefix = key.slice(0, star)
+    const suffix = key.slice(star + 1)
+    if (!specifier.startsWith(prefix) || !specifier.endsWith(suffix)) continue
+    if (specifier.length < prefix.length + suffix.length || prefix.length <= bestPrefix) continue
+    bestPrefix = prefix.length
+    best = { targets, captured: specifier.slice(prefix.length, specifier.length - suffix.length) }
+  }
+  if (!best) return null
+
+  for (const target of best.targets) {
+    const hit = tryCandidates(resolve(map.base, target.replace("*", best.captured)), true)
+    if (hit) return hit
+  }
+  return null
 }
 
 function resolveExtensionless(specifier: string, parentURL: string | undefined): string | null {
@@ -70,19 +237,8 @@ function resolveExtensionless(specifier: string, parentURL: string | undefined):
   }
   if (/\.[cm]?[jt]sx?$/.test(specifier)) return null
 
-  const base = new URL(specifier, parentURL)
-  const path = fileURLToPath(base)
-
-  for (const ext of CANDIDATES) {
-    if (existsSync(path + ext)) return canonical(path + ext)
-  }
   // A directory import means its index file, as under Bun and CommonJS.
-  if (existsSync(path) && statSync(path).isDirectory()) {
-    for (const ext of CANDIDATES) {
-      if (existsSync(`${path}/index${ext}`)) return canonical(`${path}/index${ext}`)
-    }
-  }
-  return null
+  return tryCandidates(fileURLToPath(new URL(specifier, parentURL)))
 }
 
 registerHooks({
@@ -100,6 +256,12 @@ registerHooks({
     }
     const found = resolveExtensionless(specifier, context.parentURL)
     if (found) return { url: found, shortCircuit: true }
+    // Before node_modules, which is the precedence tsc and Bun both use: an
+    // alias is meant to shadow a package of the same name, not lose to one.
+    if (!specifier.startsWith(".") && !specifier.startsWith("/") && !specifier.includes(":")) {
+      const aliased = resolveTsconfigPaths(specifier, context.parentURL)
+      if (aliased) return { url: aliased, shortCircuit: true }
+    }
     try {
       const resolved = nextResolve(specifier, context)
       // Solid's exports map sends every non-browser runtime to its SSR build —
@@ -117,8 +279,9 @@ registerHooks({
       //
       // Narrower than `--conditions=browser`, which would redirect every other
       // package that branches on `browser` too.
-      if (SOLID_SSR.test(resolved.url)) {
-        return { ...resolved, url: resolved.url.replace(/server\.js$/, SOLID_STORE.test(resolved.url) ? "store.js" : "solid.js") }
+      const ssr = SOLID_SSR.exec(resolved.url)
+      if (ssr) {
+        return { ...resolved, url: resolved.url.replace(/server\.js$/, SOLID_CLIENT[ssr[1] ?? ""]!) }
       }
       return resolved
     } catch (err: any) {
@@ -149,8 +312,10 @@ registerHooks({
     // Bun imports text assets as a default-exported string. Node has no loader
     // for them, so the suite dies on `Unknown file extension ".txt"`. Measured in
     // the source: .txt(36) .sql(10) .prompt(3) .md(1) — prompts and SQL, all read
-    // as text. `.wasm` is deliberately NOT here: it is bytes, not a string, and a
-    // wrong guess would be worse than the honest error.
+    // as text. `.css` rides along: every stylesheet here is a bare side-effect
+    // import that a component pulls in for the bundler, so the text is unread and
+    // only the module existing matters. `.wasm` is deliberately NOT here: it is
+    // bytes, not a string, and a wrong guess would be worse than the honest error.
     if (TEXT_ASSET.test(pathname)) {
       const text = readFileSync(fileURLToPath(url), "utf8")
       return {
@@ -174,7 +339,10 @@ registerHooks({
       }
     }
 
-    if (!TS.test(pathname)) return nextLoad(url, context)
+    // `.jsx` is ours only when a Solid mode is on. Under `--conditions=solid`
+    // the Solid libraries resolve to their untransformed source — that is the
+    // whole point of the condition — so the consumer is expected to compile it.
+    if (!TS.test(pathname) && !(SOLID_MODE && pathname.endsWith(".jsx"))) return nextLoad(url, context)
     // Read the file DIRECTLY rather than delegating. Calling `nextLoad` here —
     // even just to get the source — re-enters the loader and the process wedges:
     // a single 38-import barrel never finished in 15 minutes, with the event loop
@@ -189,17 +357,21 @@ registerHooks({
     // ("@opentui/solid/preload is Bun-only"), so a suite whose JSX is Solid needs
     // this or it cannot run on node at all.
     //
-    // Opt-in via NUB_TEST_SOLID because applying it to non-Solid JSX would
-    // silently produce wrong output rather than an error.
-    if (process.env.NUB_TEST_SOLID && /\.[jt]sx$/.test(path) && !path.includes("node_modules")) {
+    // Opt-in per suite via NUB_TEST_SOLID, because the two renderers need
+    // different output and applying either to non-Solid JSX would produce wrong
+    // code rather than an error. `universal` drives OpenTUI's renderer for the
+    // TUI; `dom` is the browser renderer the app uses, and it is the only mode
+    // that also compiles node_modules — a DOM Solid library ships JSX source
+    // under the `solid` export condition precisely so its consumer compiles it.
+    if (SOLID_MODE && /\.[jt]sx$/.test(path) && (SOLID_MODE === "dom" || !path.includes("node_modules"))) {
       const out = babelTransformSync(source, {
         filename: path,
         configFile: false,
         babelrc: false,
         sourceMaps: "inline",
         presets: [
-          [solidPreset, { moduleName: "@opentui/solid", generate: "universal" }],
-          [tsPreset, { isTSX: true, allExtensions: true }],
+          SOLID_MODE === "universal" ? [solidPreset, { moduleName: "@opentui/solid", generate: "universal" }] : [solidPreset],
+          ...(path.endsWith(".tsx") ? [[tsPreset, { isTSX: true, allExtensions: true }] as const] : []),
         ],
       })
       return { format: "module", source: out?.code ?? source, shortCircuit: true }
@@ -211,9 +383,11 @@ registerHooks({
       target: "node22",
       sourcefile: path,
       sourcemap: "inline",
-      // `import.meta.dir` is Bun-only; node spells it `dirname`. The suite's own
-      // bun test preload uses it, so without this the preload cannot even load.
-      define: { "import.meta.dir": "import.meta.dirname" },
+      // Two Bun-isms node does not have. `import.meta.dir` is node's `dirname`,
+      // and the suite's own bun test preload uses it, so without it the preload
+      // cannot even load. `import.meta.env` is Bun's alias for `process.env`,
+      // which is also what Vite's app code reads for its VITE_* build settings.
+      define: { "import.meta.dir": "import.meta.dirname", "import.meta.env": "process.env" },
     })
     return { format: "module", source: code, shortCircuit: true }
   },
