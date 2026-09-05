@@ -13,8 +13,16 @@ afterAll(async () => {
   const { AppRuntime } = await import("../src/effect/app-runtime")
   await AppRuntime.dispose()
 
+  // ENOTEMPTY sits beside EBUSY here because a recursive rm races anything still
+  // writing under the tree — a lock file, a WAL sidecar, a package the config
+  // directory installed. Node surfaces that race as ENOTEMPTY where Bun's own
+  // remove does not, so retrying only EBUSY failed the root hook of two dozen
+  // files, each counted as a failing test.
   const busy = (error: unknown) =>
-    typeof error === "object" && error !== null && "code" in error && error.code === "EBUSY"
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "EBUSY" || error.code === "ENOTEMPTY")
   const rm = async (left: number): Promise<void> => {
     Bun.gc(true)
     await sleep(100)

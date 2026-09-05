@@ -9,6 +9,7 @@ import { Config } from "@/config/config"
 import { Identifier } from "../../src/id/id"
 import { Process } from "@/util/process"
 import path from "path"
+import { fileURLToPath } from "node:url"
 import { testEffect } from "../lib/effect"
 import { writeFileStringScoped } from "../lib/filesystem"
 import { TestConfig } from "../fixture/config"
@@ -231,9 +232,18 @@ describe("Truncate", () => {
     )
 
     test("loads truncate effect in a fresh process", async () => {
-      const out = await Process.run([process.execPath, "run", path.join(ROOT, "src", "tool", "truncate.ts")], {
-        cwd: ROOT,
-      })
+      // `bun run <file>` under Bun; node has no `run` subcommand and needs the
+      // resolver hooks to load a TypeScript entry at all.
+      const out = await Process.run(
+        [
+          process.execPath,
+          "--import",
+          fileURLToPath(import.meta.resolve("@opencode-ai/nub-test/hooks")),
+          "--disable-warning=ExperimentalWarning",
+          path.join(ROOT, "src", "tool", "truncate.ts"),
+        ],
+        { cwd: ROOT },
+      )
 
       expect(out.code).toBe(0)
     }, 20000)
