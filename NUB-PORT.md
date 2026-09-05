@@ -32,9 +32,41 @@ darwin-arm64, hyperfine, 12 warm runs and 3 cold with the cache wiped between. H
 | nub, embed | 772 ms | 4.90 s | 45.3 MB | 44.4 MB |
 | nub, `--smol` | 822 ms | 3.20 s | **18.3 MB** | **17.4 MB** |
 
-**Bun is about 2.1x faster to start, and smaller to ship.** Its binary *is* the runtime; nub's launcher spawns Node as a child, paying two process starts plus Node's own init, and on a first run also pays extraction.
+**That table is superseded and both of its nub rows are now wrong.** Re-measured 2026-09-05 against the same binary shape, warm startup is 425 ms, not 772, and cold is 2.3 s, not 4.9 — nub roughly halved both while this branch sat still. The Bun column cannot be refreshed: this branch's source no longer builds under Bun at all, because four files import `node:sqlite` and Bun has no such builtin. So the like-for-like comparison the table records is a historical measurement, not something reproducible today.
 
-The on-disk column is the misleading one and should never be quoted alone: nub's binary barely compresses because the embedded Node is already zstd-19, while Bun's compresses 3x because it is stored uncompressed. What you actually ship is the compressed size, and there Bun wins — 33.6 MB against 44.4 MB. `--smol` is the only shape that beats it, at 17.4 MB, because it carries no runtime at all.
+The explanation attached to it was also wrong. It said nub's launcher "spawns Node as a child, paying two process starts". A `nub compile` artifact of a one-line program starts in **38.2 ms ± 6.9**, against **42.0 ms ± 4.8** for `node -e ''` on the same host — indistinguishable, and no room for a second process start. Warm, the two builds are level: on an alternating timer over 25 runs this build prints `--version` in 654.8 ms against the release's 665.1 ms, and comes out lower in 11 of 25 paired runs.
+
+What is left is cold start, and it is not startup at all — it is extraction. See below.
+
+The size half of the table stands, and its warning is the part to keep. The on-disk column is the misleading one and should never be quoted alone: nub's binary barely compresses because the embedded Node is already zstd-19, while Bun's compresses 3x because it is stored uncompressed. What you actually ship is the compressed size, and there Bun wins — 33.6 MB against 44.4 MB. `--smol` is the only shape that beats it, at 17.4 MB, because it carries no runtime at all.
+
+### Cold start is extraction, and a types-only peer was a fifth of it
+
+The first run of a compiled artifact unpacks its payload; every run after that finds it already there. That first run costs about 2.4 s here, and warm runs cost 0.4 s, so essentially the whole cold-start gap against Bun — whose binary carries no payload to unpack — is this one step.
+
+The payload was 108 MB across 2813 files. **23 MB of it was the TypeScript compiler**, shipped inside `@opentui/core/node_modules/typescript` and never loaded by anything.
+
+It arrives through a declaration, not an import. `bun-ffi-structs` names `typescript` in `peerDependencies`, and `nub compile` walks `dependencies`, `optionalDependencies` and `peerDependencies` transitively for every package it ships unbundled — deliberately, because such a package runs from real files and resolves its peers by walking up like any other require. Omitting one would ship a package that fails at run time on a module its own manifest named.
+
+Here the peer is types-only. `bun-ffi-structs` publishes `files: ["dist"]`, and its `dist/index.js` contains no occurrence of the string `typescript`; OpenTUI has also already inlined that package into its own `chunk-node-*.js`, so the directory is not on the Node arm's load path at all. `patches/bun-ffi-structs@0.2.4.patch` drops the peer.
+
+Measured against a control built from this same tree with the patch removed and the store entry deleted so `bun install` genuinely re-extracts it — without that deletion the "control" silently reuses the patched copy and comes out byte-identical:
+
+| | payload | files | binary | cold `--version` |
+| --- | --- | --- | --- | --- |
+| control | 108 MB | 2813 | 46.36 MB | 2658 ms |
+| patched | **86 MB** | **2684** | **43.06 MB** | **2448 ms** |
+
+Nine alternating pairs, medians; the patched build was faster in 7 of 9. Warm startup and the TUI are unchanged — the frame renders, `models` still lists 32 providers.
+
+Note the shape of that result: 20% fewer bytes bought 8% less time, while the file count fell only 5%. Extraction is closer to per-file than per-byte, which is worth knowing before chasing further megabytes.
+
+Two things were checked and left alone:
+
+- **`--unbundled @opentui/core` does nothing.** Removing the flag produces a byte-identical binary and the same payload hash. `nub compile` already detects that OpenTUI cannot be flattened; the flag only adds to what detection found. It stays for documentation value, not effect.
+- **`node-gyp`, 8 MB inside `@npmcli/run-script`'s closure, is load-bearing.** `run-script` reaches it when a plugin has a native build step, and the build already marks it `--external`, so the unbundled copy is what makes that external resolvable. That closure is also 1159 files — 41% of the payload's file count, and the largest remaining lever, but not a free one.
+
+**21.5% of the remaining payload is byte-identical duplicates** — 333 files, 17.7 MB. The dylib ships twice (staged into `otui-assets` and again inside the ejected package), `tree-sitter.wasm` four times, every grammar twice. Half of that is this build's staging and half is one package landing under several closure placements. Deduplicating it belongs in `nub compile` rather than here: giving up the staged asset root would trade away the musl fix below for bytes that a content-addressed payload would return anyway.
 
 ### musl needs `OPENTUI_LIBC` set explicitly
 
