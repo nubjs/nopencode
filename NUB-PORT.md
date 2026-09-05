@@ -8,6 +8,8 @@ The branch carries only hand-written source. The Solid JSX transform is a **buil
 
 Builds and runs on **darwin-arm64**, **darwin-x64**, **linux-x64**, **linux-arm64**, **linux-arm64-musl** and **win32-x64**, with the TUI rendering on every one. That is the embed shape; `--smol` is verified with its TUI on darwin-x64 and linux-arm64, and the other four are untried in that shape rather than known good.
 
+A TUI startup failure on darwin-arm64 held that claim open for a day; it turned out to be the development worktree's `node_modules` rather than anything in the port or in `nub compile` (below).
+
 Verified from a foreign working directory, with the runtime cache cleared and a fresh `HOME`, and separately with this source tree moved away entirely:
 
 | | |
@@ -23,7 +25,9 @@ Verified from a foreign working directory, with the runtime cache cleared and a 
 | `--smol` | 21.6 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after. Needs `curl` or `wget` on the box — a slim image has neither, and nub says so rather than failing obscurely |
 | A model response | **not verified.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`). |
 
-The TUI row above has not been reproducible on the development machine since 2026-09-04. A binary built there starts, loads its config, and exits before drawing a frame. The CLI's top-level handler prints only `Unexpected error / An error occurred in Effect.tryPromise`; printing the Effect's `cause` gives the real fault:
+### A TUI startup failure that was the install, not the build
+
+For a day this branch could not draw a frame on the development machine. A binary built there started, loaded its config, and exited. The CLI's top-level handler printed only `Unexpected error / An error occurred in Effect.tryPromise`; printing the Effect's `cause` gave the real fault:
 
 ```
 Error: TuiStartupProvider is missing
@@ -32,9 +36,13 @@ Error: TuiStartupProvider is missing
     at App (…/src/layer-Ckm05hos.mjs)
 ```
 
-`App` calls `useTuiStartup()`, which is `useContext(StartupContext)` with a throw when it comes back empty (`packages/tui/src/context/runtime.tsx`). In `packages/tui/src/app.tsx` the component sits inside `<TuiStartupProvider>` through an unbroken chain of synchronous providers, so in the source the context is in scope.
+It no longer reproduces. Four builds from the same commit all render the frame under `script/nub-pty-screen.py`: released nub 0.8.3, a `nub` built from `main`, and that same `main` build with `--no-minify`, plus the default recipe below. The only thing that changed between the failing binary and the first working one was a `bun install` in the worktree — the lockfile came out unchanged, so the *resolution* was already right and the tree was not.
 
-It is not the usual duplicate-instance case: the extracted bundle has one Solid runtime (one chunk defining `createSignal`) and one copy of the provider module. It also predates this branch — it reproduces on a binary compiled from the base commit, with the released `nub` and with one built from `main`, from a clean working directory, under a fresh `HOME`, with `OPENCODE_PURE=1`, and against a fresh `OPENCODE_DB`. On the same binary `--version`, `models` and `serve` are all correct, and `serve` bootstraps the same instance the TUI does. Unresolved; the remaining question is why the context lookup comes back empty in the compiled graph.
+The two bundles say the same thing. The failing artifact has 261 chunks and 35 `get children` getters; every artifact built since has 269 and 407. Those getters are Solid's JSX transform output, written by `script/nub-solid-transform.mjs` before the bundler ever runs, so a difference in how many of them exist is upstream of `nub compile` entirely. It is also exactly the difference that breaks the context: `Provider` assigns `Owner.context` and reads `children` only after, so a lazy `get children()` puts the subtree inside the provider's owner and an eager `children:` puts it outside, where `useContext` finds nothing.
+
+The leading explanation is an incomplete install — the per-package `node_modules` symlinks that both `packageDir("solid-js")` and the transform's own `babel-preset-solid` resolution depend on. A sibling worktree in this repo was found missing 26 of them. That is unproven: the tree is gone and cannot be re-measured. The practical consequence is the one worth keeping — **run `bun install` before building**, and treat a TUI that dies with a missing provider as a suspect install rather than a bundler defect.
+
+Two things it was not. Not a duplicate-instance problem: the extracted bundle has one Solid runtime (one chunk defining `createSignal`) and one `StartupContext`. Not minification: an artifact built with minification on renders, and its getters survive intact.
 
 ### Measured against the Bun build
 
