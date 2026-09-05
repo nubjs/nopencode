@@ -173,6 +173,16 @@ The Solid transform rewrites `.tsx` in place, exactly as the Bun build's `onLoad
 
 `OPENCODE_MODELS_JSON`, `OUT` and `NO_MINIFY=1` are honoured by `script/build-nub.mjs`. It resolves packages by walking the workspace's own `node_modules` rather than reading a store path, so it builds the same from a `bun install` tree, a `nub install` tree or an npm one.
 
+### Installing with `nub install`
+
+Measured on a pristine checkout: `nub install` exits 0, `node script/build-nub.mjs` exits 0, and the binary's TUI renders. The suite lands at 5942 / 102 / 48 against 5956 / 97 / 48 on a `bun install` tree of the same commit — 21 of the 23 targets identical, including `core` at 1066 / 8 on both.
+
+Two differences are worth knowing about, and neither touches the compiled CLI.
+
+**A missing peer.** `@effect/platform-node` declares `ioredis` as a non-optional peer and imports it at module scope from `NodeRedis.js`. `bun install` supplies a missing non-optional peer and `nub install` does not, so the same source links under one and fails under the other — 48 test files died on it, and every module-not-found in that run named that one package. `packages/nub-test/ioredis-absent.ts` fills the hole with a stub whose constructors throw, wired into the resolver hook's existing `ERR_MODULE_NOT_FOUND` arm so it is reached only after node's own resolution has failed. A tree carrying the real package is untouched. Nothing in opencode constructs a Redis client; the compiled binary makes the same call with `--external ioredis`.
+
+**Electron.** `packages/desktop` runs 58 / 2 on a nub tree against 70 / 1 on a bun tree, because `electron`'s binary extraction does not complete: `dist` holds one entry rather than four, and the `path.txt` the extraction writes is absent. It is not a stripped lifecycle script — electron 42's published manifest declares no `scripts` at all, on either tree.
+
 ### 3. Run it
 
 ```sh

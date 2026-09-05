@@ -372,6 +372,19 @@ registerHooks({
       // with an extension is only reached once Node has genuinely failed, so it
       // costs nothing on the normal path and never masks a different error.
       if (err?.code !== "ERR_MODULE_NOT_FOUND" || /\.[cm]?[jt]sx?$/.test(specifier)) throw err
+      // `@effect/platform-node` declares ioredis as a NON-optional peer and
+      // imports it from `NodeRedis.js`, which nothing in opencode drives. bun
+      // installs a missing non-optional peer and nub does not, so the same tree
+      // resolves under one install and fails to LINK under the other — 48 files
+      // died on it, and every module-not-found in that run was this one package.
+      //
+      // Only reached once node has genuinely failed, so a tree that has the real
+      // ioredis keeps it and nothing changes. `script/build-nub.mjs` makes the
+      // same call for the compiled binary with `--external ioredis`; this is the
+      // test-time half of that decision, and it costs no dependency.
+      if (specifier === "ioredis" || specifier.startsWith("ioredis/")) {
+        return { url: new URL("./ioredis-absent.ts", import.meta.url).href, shortCircuit: true }
+      }
       for (const ext of [...CANDIDATES, ...CANDIDATES.map((e) => `/index${e}`)]) {
         try {
           const candidate = nextResolve(specifier + ext, context)
