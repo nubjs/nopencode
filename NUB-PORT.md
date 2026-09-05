@@ -23,7 +23,18 @@ Verified from a foreign working directory, with the runtime cache cleared and a 
 | `--smol` | 21.6 MB, provisions its own Node on a machine that has none: 14 s first run, 2 s after. Needs `curl` or `wget` on the box — a slim image has neither, and nub says so rather than failing obscurely |
 | A model response | **not verified.** No usable credential on the test machine: the same prompt fails identically on this binary, the Bun build, and a stock installed opencode (`Token refresh failed: 401`). |
 
-The TUI row above has not been reproducible on the development machine since 2026-09-04. A binary built there that day starts, loads its config, and then exits with `Error: Unexpected error / An error occurred in Effect.tryPromise` before drawing a frame — from a clean working directory, under a fresh `HOME`, with `OPENCODE_PURE=1`, and with network reachable. It reproduces on a binary compiled from this branch's base commit, so it is not something the test migration introduced, and it reproduces with both the released `nub` and one built from `main`, so it is not a single `nub` build either. `--version`, `models` and `serve` are all correct on the same binary — `serve` bootstraps the same instance the TUI does and reaches `opencode server listening`. Pointing `OPENCODE_DB` at a fresh file does not change it either. With `--print-logs --log-level DEBUG` the log ends at the formatter service's `init` and then `disposing instance`, with no error line of its own. Unresolved; the cause is not yet known.
+The TUI row above has not been reproducible on the development machine since 2026-09-04. A binary built there starts, loads its config, and exits before drawing a frame. The CLI's top-level handler prints only `Unexpected error / An error occurred in Effect.tryPromise`; printing the Effect's `cause` gives the real fault:
+
+```
+Error: TuiStartupProvider is missing
+    at required (…/src/theme-B5AVrCIr.mjs)
+    at useTuiStartup (…/src/theme-B5AVrCIr.mjs)
+    at App (…/src/layer-Ckm05hos.mjs)
+```
+
+`App` calls `useTuiStartup()`, which is `useContext(StartupContext)` with a throw when it comes back empty (`packages/tui/src/context/runtime.tsx`). In `packages/tui/src/app.tsx` the component sits inside `<TuiStartupProvider>` through an unbroken chain of synchronous providers, so in the source the context is in scope.
+
+It is not the usual duplicate-instance case: the extracted bundle has one Solid runtime (one chunk defining `createSignal`) and one copy of the provider module. It also predates this branch — it reproduces on a binary compiled from the base commit, with the released `nub` and with one built from `main`, from a clean working directory, under a fresh `HOME`, with `OPENCODE_PURE=1`, and against a fresh `OPENCODE_DB`. On the same binary `--version`, `models` and `serve` are all correct, and `serve` bootstraps the same instance the TUI does. Unresolved; the remaining question is why the context lookup comes back empty in the compiled graph.
 
 ### Measured against the Bun build
 
@@ -294,12 +305,12 @@ Every package, on one machine, measured the same way on both sides: Bun at the c
 
 | package | Bun | Node |
 | --- | --- | --- |
-| opencode | 3184 / 5 / 17 skipped | 3095 / 105 / 17 skipped |
+| opencode | 3184 / 5 / 17 skipped | 3099 / 58 / 17 skipped |
 | core | 1080 / 0 | 1066 / 8 |
 | app (test:unit) | 693 / 1 | 684 / 2 |
 | llm | 298 / 0 / 30 skipped | 298 / 0 / 30 skipped |
 | codemode | 263 / 0 | 263 / 0 |
-| tui | 168 / 5 / 1 skipped | 187 / 3 / 1 skipped |
+| tui | 168 / 5 / 1 skipped | 188 / 2 / 1 skipped |
 | session-ui | 76 / 0 | 76 / 0 |
 | desktop | 70 / 1 | 70 / 1 |
 | httpapi-codegen | 66 / 0 | 65 / 1 |
@@ -317,7 +328,7 @@ Every package, on one machine, measured the same way on both sides: Bun at the c
 | cli | 3 / 0 | 3 / 0 |
 | protocol | 2 / 0 | 2 / 0 |
 | sdk | 1 / 0 | 1 / 0 |
-| **total** | **6050 / 38 / 48 skipped** | **5955 / 146 / 48 skipped** |
+| **total** | **6050 / 38 / 48 skipped** | **5960 / 98 / 48 skipped** |
 
 Read the Bun column as the target rather than as a pass mark: 38 of its own tests fail, and `cli`, `enterprise`, `protocol` and `stats-core` had no `test` script at all before this branch, so their files were unrunnable rather than passing. `tui` is the one package ahead of Bun.
 
