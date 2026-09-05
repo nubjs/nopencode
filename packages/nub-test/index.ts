@@ -202,6 +202,14 @@ export const describe = Object.assign(describeWrapper, {
   only: (nodeDescribe as any).only,
   skip: (nodeDescribe as any).skip,
   todo: (nodeDescribe as any).todo,
+  /**
+   * `node:test` already runs every test in a suite concurrently, so Bun's
+   * `.concurrent` is the default here rather than a mode to switch on. Aliasing
+   * it to the plain form keeps the two call sites that use it honest: they get
+   * concurrency, just not because they asked.
+   */
+  concurrent: describeWrapper,
+  skipIf: (condition: boolean) => (condition ? (nodeDescribe as any).skip : describeWrapper),
 })
 
 export { it, beforeEach, afterEach, expect }
@@ -219,10 +227,16 @@ export const afterAll = after
  * registers one test per row, interpolating `%s`/`%d`/`%i` in the name the way
  * Bun and Jest do.
  */
-function each<T extends readonly unknown[]>(
+// The overload set is Bun's own, deliberately: the first constraint is what
+// forces a heterogeneous row like `["@ai-sdk/groq", { reasoningEffort: "high" }]`
+// to infer as a TUPLE. A plain `readonly unknown[]` widens it to an array of the
+// union, and the callback's parameters stop lining up positionally — 6 real type
+// errors in the transform tests, on rows Bun typed fine.
+function each<T extends Readonly<[unknown, ...unknown[]]>>(
   rows: readonly T[],
-): (name: string, fn: (...row: T) => unknown) => void
-function each<T>(rows: readonly T[]): (name: string, fn: (row: T) => unknown) => void
+): (name: string, fn: (...row: [...T]) => unknown) => void
+function each<T extends unknown[]>(rows: readonly T[]): (name: string, fn: (...row: T) => unknown) => void
+function each<const T>(rows: readonly T[]): (name: string, fn: (row: T) => unknown) => void
 function each(rows: readonly any[]) {
   return (name: string, fn: (...row: any[]) => unknown) => {
     for (const row of rows) {
@@ -282,11 +296,16 @@ export const test = Object.assign(runner, {
   only: variant("only"),
   skip: variant("skip"),
   todo: variant("todo"),
+  /** Concurrent is node:test's default; see the note on `describe.concurrent`. */
+  concurrent: runner,
+  skipIf: (condition: boolean) => (condition ? variant("skip") : runner),
 }) as typeof runner & {
   each: typeof each
   only: typeof runner
   skip: typeof runner
   todo: typeof runner
+  concurrent: typeof runner
+  skipIf: (condition: boolean) => typeof runner
 }
 
 /**
@@ -301,9 +320,12 @@ type MockFn = ((...args: any[]) => any) & {
   mock: { calls: any[][]; results: any[] }
   mockClear: () => void
   mockReset: () => void
+  mockRestore: () => void
   mockImplementation: (impl: (...args: any[]) => any) => MockFn
-  mockResolvedValue: (value: any) => MockFn
-  mockReturnValue: (value: any) => MockFn
+  /** Optional value: `spyOn(x, "f").mockResolvedValue()` stubs a `Promise<void>`. */
+  mockResolvedValue: (value?: any) => MockFn
+  mockRejectedValue: (reason?: any) => MockFn
+  mockReturnValue: (value?: any) => MockFn
 }
 
 function wrap(inner: any): MockFn {
@@ -324,12 +346,18 @@ function wrap(inner: any): MockFn {
   })
   fn.mockClear = () => ctx.resetCalls()
   fn.mockReset = () => ctx.restore()
+  // Bun distinguishes reset (drop the implementation) from restore (put the
+  // original back); node:test spells both `restore` on the mock context, and
+  // for a `spyOn` that is what callers of either name want.
+  fn.mockRestore = () => ctx.restore()
   fn.mockImplementation = (impl) => {
     ctx.mockImplementation(impl)
     return fn
   }
   fn.mockReturnValue = (value) => fn.mockImplementation(() => value)
   fn.mockResolvedValue = (value) => fn.mockImplementation(async () => value)
+  fn.mockRejectedValue = (reason) =>
+    fn.mockImplementation(() => Promise.reject(reason instanceof Error ? reason : new Error(String(reason))))
   return fn
 }
 
@@ -402,12 +430,20 @@ export function spyOn<T extends object>(object: T, method: keyof T): MockFn {
   return wrap(nodeMock.method(object as any, method as any))
 }
 
-/** Vitest-style alias; two files import it. */
+/**
+ * Vitest-style alias; two files import it, for fake timers only.
+ *
+ * `useFakeTimers` enables the timer APIs explicitly rather than taking node's
+ * default set: node also fakes `Date` when given no list, and these callers
+ * advance timers around code that reads the clock, so faking Date too changes
+ * what they measure.
+ */
 export const vi = {
   fn: mock,
   spyOn,
-  useFakeTimers: () => nodeMock.timers.enable(),
+  useFakeTimers: () => nodeMock.timers.enable({ apis: ["setTimeout", "setInterval", "setImmediate"] }),
   useRealTimers: () => nodeMock.timers.reset(),
+  advanceTimersByTime: (ms: number) => nodeMock.timers.tick(ms),
 }
 
 /** `setSystemTime` maps onto node's timer mocking, which must be enabled first. */

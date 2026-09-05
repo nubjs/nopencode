@@ -284,39 +284,44 @@ A compiled binary already runs Node with `--experimental-ffi` (nub injects it on
 
 `--node-options` is the `compile.execArgv` equivalent for anything else. `--use-system-ca`, which the Bun build bakes in, is not passed yet; Node has the flag since v23.8.
 
-## Running the test suite on stock Node
+## Running the test suite on Node
 
-The suite is written against `bun:test`. `packages/nub-test` runs it on stock Node instead, so the same tests check both runtimes. The Bun path is preserved by a `bun` export condition, which means `bun test` still runs Bun's own runner and stays a usable control — without that, rewriting the imports silently replaces the baseline you are comparing against.
+The suite is written against `bun:test`. `packages/nub-test` runs it on stock Node instead, and `bun test` is gone — every package's `test` script is a `node --test` invocation, and the shim's `bun` export condition, which had kept Bun's runner working as a control, went with it. `nub run test:all` runs every package in series and tallies.
 
-| package | Bun | node:test |
-| --- | --- | --- |
-| `core` | 1080 / 0 | 901 / 39 |
-| `llm` | 298 / 0 | 298 / 0 |
-| `codemode` | 263 / 0 | 263 / 0 |
-| `tui` | 168 / 5 | 190 / 2 |
-| `session-ui` | 76 / 0 | 76 / 0 |
-| `desktop` | 70 / 1 | 70 / 1 |
-| `console` | 19 / 2 | 16 / 3 |
-| `client` | 16 / 0 | 15 / 1 |
-| `schema` | 13 / 2 | 13 / 2 |
+RESULTS_TABLE_PLACEHOLDER
 
-`tui` needs three flags and one env var:
+Three flags every script carries:
 
-```sh
-NUB_TEST_SOLID=1 OTUI_ASSET_ROOT=<repo>/packages/opencode/otui-assets \
-  node --experimental-ffi --experimental-test-module-mocks \
-       --import ../nub-test/hooks.ts --test --test-force-exit 'test/**/*.test.tsx'
-```
+- **`--test-force-exit`.** Several suites finish every test and then sit forever on a handle nothing closes; bun exits regardless. It is post-run rather than a hang — `core/test/npm.test.ts` prints all three of its suite summaries and then never returns.
+- **`--test-timeout=30000`.** bun's own default is a 5-second per-test timeout, so the Bun numbers above were already bounded. Node's default is Infinity, which turns one wedged test into a suite that never returns.
+- **`--test-reporter=dot`**, the nearest thing to bun's `--only-failures`.
 
-`--experimental-ffi` is what OpenTUI's native backend needs; without it every renderer test fails with "OpenTUI native FFI is not available for this runtime yet". `--test-force-exit` is needed because one file leaks a handle and Node otherwise waits on it forever — Bun exits regardless.
+`tui` additionally stages the OpenTUI assets first and points `OTUI_ASSET_ROOT` at them; without that, OpenTUI resolves its native library by importing `@opentui/core-<platform>-<arch>`, whose exports map declares no main, and every renderer test dies with `No "exports" main defined`. The compiled binary solves the same problem the same way. `packages/app` splits into two runs because its halves need different export conditions — `--conditions=solid` for `src`, `--conditions=browser` for `test-browser` — and happy-dom moves from bun's `--preload` to a second `--import`.
 
 What the shim has to bridge, beyond renaming `beforeAll` to `before`:
 
 - **Extensionless and NodeNext imports.** Bun resolves `./agent` to `./agent.ts`, and `./plugin.js` to `plugin.ts`. Node does neither.
 - **Non-erasable TypeScript.** Node strips types but refuses parameter properties and enums, so the load hook compiles with esbuild.
 - **Symlink canonicalisation.** Node keys its module cache on the resolved URL, so two spellings of one file are two modules. Under the workspace store one driver was instantiated 252 times and the resolver never terminated.
-- **SolidJS JSX**, which is a compile-to-renderer-ops pass rather than a `jsx()` factory rewrite — no esbuild setting produces it.
+- **SolidJS JSX**, a compile-to-renderer-ops pass rather than a `jsx()` factory rewrite — no esbuild setting produces it.
 - **`solid-js` resolving to its SSR build.** Both runtimes resolve it identically; OpenTUI's Bun plugin swaps in the client build, and the shim redirects to it in `resolve` so app code and the renderer share one module instance.
+- **`mock.module` resolution.** `node:test` resolves a bare specifier against the immediate caller, which through the shim's wrapper is the shim itself — so mocking `@opentui/core` from a tui test failed naming a dependency of `packages/nub-test`. The shim resolves first and hands node an absolute URL. That has to go through `import.meta.resolve`, since the registered hooks apply to it and `createRequire` would return `solid-js`'s CJS entry and mock a second copy — a silent no-op rather than an error.
 - **Bun's own APIs** — the `Bun` global, `bun:sqlite`, the `$` shell, `with { type: "file" }` assets, and snapshots read from Bun's committed `.snap` files.
 
 Anything not implemented throws. A silently missing API turns a real assertion into a passing no-op, which is the one failure mode a migration like this must not have.
+
+### The one dependency this added
+
+`expect@29.7.0`, Jest's, as a devDependency of the shim. Everything else it needs was already in the tree.
+
+It is there because of what the suite asserts with, counted across all test files: `toEqual` 3404 times, `toMatchObject` 678, and the asymmetric matchers `expect.objectContaining` 126, `expect.any` 37, `expect.stringContaining` 23, `expect.arrayContaining` 18, `expect.stringMatching` 8. A hand-written deep-equality engine that is subtly wrong does not fail — it passes, on both sides of a comparison it should have rejected, which is the failure mode this whole migration exists to avoid. `node:assert` has no asymmetric-matcher equivalent to build on.
+
+The Bun-only matchers Jest lacks (`toBeTrue`, `toStartWith`, `toBeFunction`, and their siblings) are ~30 lines of `expect.extend` in the shim rather than another package.
+
+## What still touches Bun
+
+- **The `Bun` global**, through `packages/opencode/src/nub/bun-compat.ts`. 38 call sites in the compiled graph, 25 of them `Bun.stringWidth`. Rewriting each to a direct import would churn upstream source to no benefit — the polyfill is the sanctioned mechanism.
+- **`sqlite.bun.ts`, `pty.bun.ts`, `fff.bun.ts`** — the `bun` arms of opencode's own conditional exports. The nub build selects the `node` siblings; upstream keeps both.
+- **The package build scripts** that call `Bun.build`, `Bun.spawn` or `Bun.Glob`. Those ARE the Bun build path, which `script/build-nub.mjs` replaces rather than reimplements, so pointing them at nub would break them for nothing.
+- **`@types/bun`**, in 20 packages that still name `Bun` somewhere. Eight others no longer do and could drop it.
+- **`bun.lock` and `packageManager: bun@1.3.14`.** `nub install` reads the lockfile and installs from it; nothing here writes a second one.
