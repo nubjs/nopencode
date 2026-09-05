@@ -21,7 +21,7 @@
     "package:win": "electron-builder --win --config electron-builder.config.ts",
     "package:linux": "electron-builder --linux --config electron-builder.config.ts",
     "native:build": "nub install --dir native",
-    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot electron-builder.config.test.ts"
+    "test": "node --import @opencode-ai/nub-test/hooks --test --test-force-exit --test-timeout=30000 --test-reporter=dot electron-builder.config.test.ts 'src/**/*.test.ts'"
   },
   "main": "./out/main/index.js",
   "dependencies": {

@@ -6,7 +6,7 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "test": "nub ../opencode/script/stage-otui-assets.mjs && NUB_TEST_SOLID=1 node --import @opencode-ai/nub-test/hooks --import ./test/otui-assets.mjs --test --test-force-exit --test-timeout=30000 --test-reporter=dot --experimental-ffi --experimental-test-module-mocks --experimental-import-meta-resolve --disable-warning=ExperimentalWarning 'test/**/*.test.ts' 'test/**/*.test.tsx'",
+    "test": "nub ../opencode/script/stage-otui-assets.mjs && NUB_TEST_SOLID=universal node --import @opencode-ai/nub-test/hooks --import ./test/otui-assets.mjs --test --test-force-exit --test-timeout=30000 --test-reporter=dot --experimental-ffi --experimental-test-module-mocks --experimental-import-meta-resolve --disable-warning=ExperimentalWarning 'test/**/*.test.ts' 'test/**/*.test.tsx'",
     "typecheck": "tsgo --noEmit"
   },
   "exports": {
