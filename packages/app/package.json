@@ -18,16 +18,16 @@
     "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
-    "test": "bun run test:unit && bun run test:browser",
-    "test:unit": "bun test --conditions=solid --only-failures --preload ./happydom.ts ./src",
-    "test:browser": "bun test --conditions=browser --preload ./happydom.ts ./test-browser",
-    "test:unit:watch": "bun test --conditions=solid --watch --preload ./happydom.ts ./src",
+    "test": "nub run test:unit && nub run test:browser",
+    "test:unit": "node --conditions=solid --import @opencode-ai/nub-test/hooks --import ./happydom.ts --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'src/**/*.test.ts'",
+    "test:browser": "node --conditions=browser --import @opencode-ai/nub-test/hooks --import ./happydom.ts --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'test-browser/**/*.test.ts'",
+    "test:unit:watch": "node --conditions=solid --watch --import @opencode-ai/nub-test/hooks --import ./happydom.ts --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'src/**/*.test.ts'",
     "test:e2e": "playwright test",
     "test:e2e:local": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report e2e/playwright-report",
-    "test:stability": "bun test ./e2e/performance/unit/visual-stability.test.ts && playwright test --config e2e/performance/timeline-stability/playwright.config.ts",
-    "test:bench": "bun test ./e2e/performance/unit && playwright test --config e2e/performance/playwright.config.ts"
+    "test:stability": "node --conditions=solid --import @opencode-ai/nub-test/hooks --import ./happydom.ts --test --test-force-exit --test-timeout=30000 --test-reporter=dot e2e/performance/unit/visual-stability.test.ts && playwright test --config e2e/performance/timeline-stability/playwright.config.ts",
+    "test:bench": "node --conditions=solid --import @opencode-ai/nub-test/hooks --import ./happydom.ts --test --test-force-exit --test-timeout=30000 --test-reporter=dot 'e2e/performance/unit/**/*.test.ts' && playwright test --config e2e/performance/playwright.config.ts"
   },
   "license": "MIT",
   "devDependencies": {
@@ -43,7 +43,8 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-icons-spritesheet": "3.0.1",
-    "vite-plugin-solid": "catalog:"
+    "vite-plugin-solid": "catalog:",
+    "@opencode-ai/nub-test": "workspace:*"
   },
   "dependencies": {
     "@corvu/drawer": "catalog:",

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { detectServerProtocol } from "./server-protocol"
 
 const server = { url: "http://localhost:4096" }

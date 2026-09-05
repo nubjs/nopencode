@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import type { Page } from "@playwright/test"
 import { measureSessionSwitch } from "../timeline/session-tab-switch-probe"
 

@@ -1,4 +1,4 @@
-import { beforeAll, expect, mock, test } from "bun:test"
+import { beforeAll, expect, mock, test } from "@opencode-ai/nub-test"
 import type { AsyncStorage } from "@solid-primitives/storage"
 import { createEffect, createRoot } from "solid-js"
 

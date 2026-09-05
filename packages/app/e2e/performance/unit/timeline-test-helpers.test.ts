@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { base64Encode } from "@opencode-ai/core/util/encode"
 import { fixture } from "../timeline/session-timeline-stress.fixture"
 import { stressSessionHref } from "../timeline/timeline-test-helpers"

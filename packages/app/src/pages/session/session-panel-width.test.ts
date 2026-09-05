@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import {
   clampSessionPanelWidth,
   REVIEW_PANE_WIDTH_MIN,

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { createPromptState } from "@/context/prompt"
 import { createPromptSubmissionState } from "@/components/prompt-input/submission-state"
 

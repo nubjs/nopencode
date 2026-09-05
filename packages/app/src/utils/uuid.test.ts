@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "@opencode-ai/nub-test"
 import { uuid } from "./uuid"
 
 const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto")

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { summarizeNavigationMilestones } from "../timeline/navigation-milestones"
 
 test("reports first and stable paint for each navigation milestone", () => {

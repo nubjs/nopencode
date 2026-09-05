@@ -30,13 +30,22 @@ const dirs = patterns
 const targets = []
 for (const dir of dirs) {
   const pkg = JSON.parse(readFileSync(join(root, dir, "package.json"), "utf8"))
-  const script = pkg.scripts?.test
-  // Only the suites that have actually moved to node:test. A package still on
-  // another runner is skipped rather than reported as zero, which would read as
-  // "migrated and empty".
-  if (!script || !script.includes("--test ")) continue
+  // Every script that drives node's runner, not just the one called `test` —
+  // packages/app splits its suite into `test:unit` and `test:browser` under
+  // different export conditions, and a `test` that only chains them has no
+  // `--test` of its own. A package still on another runner is skipped rather
+  // than reported as zero, which would read as "migrated and empty".
+  // `playwright` scripts are excluded: they drive a real browser and belong to
+  // a separate gate, so counting them here would mix two runners' totals.
+  const runners = Object.entries(pkg.scripts ?? {}).filter(
+    ([, v]) => v.includes("--test ") && !v.includes("playwright"),
+  )
+  if (!runners.length) continue
   if (only.length && !only.some((o) => dir.includes(o) || pkg.name === o)) continue
-  targets.push({ dir, name: pkg.name ?? dir, script })
+  for (const [key, script] of runners) {
+    if (key.endsWith(":watch")) continue
+    targets.push({ dir, name: runners.length > 1 ? `${pkg.name} (${key})` : (pkg.name ?? dir), script })
+  }
 }
 
 const rows = []
@@ -45,7 +54,10 @@ for (const t of targets) {
   const command = t.script.replace("--test-reporter=dot", "--test-reporter=spec")
   process.stderr.write(`\n### ${t.name}\n`)
   const started = Date.now()
-  const out = spawnSync(command, { cwd: join(root, t.dir), shell: true, encoding: "utf8" })
+  // A wall-clock cap per PACKAGE on top of node's per-TEST --test-timeout: a
+  // file that wedges during its import graph never registers a test, so there is
+  // nothing for the per-test timeout to fire on.
+  const out = spawnSync(command, { cwd: join(root, t.dir), shell: true, encoding: "utf8", timeout: 30 * 60_000 })
   const text = (out.stdout ?? "") + (out.stderr ?? "")
   const count = (key) => {
     // Every child process prints its own summary block; sum them.

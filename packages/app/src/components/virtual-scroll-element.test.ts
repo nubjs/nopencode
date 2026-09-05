@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { virtualScrollElement } from "./virtual-scroll-element"
 
 test("resolves the connected viewport that owns the virtual root", () => {

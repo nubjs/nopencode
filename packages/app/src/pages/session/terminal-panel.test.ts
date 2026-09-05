@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { terminalTabLabel } from "./terminal-label"
 
 const t = (key: string, vars?: Record<string, string | number | boolean>) => {

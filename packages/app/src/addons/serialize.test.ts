@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, afterEach } from "bun:test"
+import { describe, test, expect, beforeAll, afterEach } from "@opencode-ai/nub-test"
 import { Terminal, Ghostty } from "ghostty-web"
 import { SerializeAddon } from "./serialize"
 

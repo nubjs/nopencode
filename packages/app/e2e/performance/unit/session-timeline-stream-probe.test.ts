@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { streamChunk } from "../timeline/session-timeline-benchmark.fixture"
 import { streamProgress } from "../timeline/session-timeline-stream-probe"
 

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import type { Page, Route } from "@playwright/test"
 import { mockOpenCodeServer } from "../../utils/mock-server"
 

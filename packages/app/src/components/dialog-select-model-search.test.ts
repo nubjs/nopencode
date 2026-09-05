@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { matchesModelSearch } from "./dialog-select-model-search"
 
 describe("matchesModelSearch", () => {

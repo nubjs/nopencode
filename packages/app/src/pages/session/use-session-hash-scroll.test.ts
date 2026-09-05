@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { messageIdFromHash } from "./message-id-from-hash"
 
 describe("messageIdFromHash", () => {

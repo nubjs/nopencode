@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { DESKTOP_MENU } from "./desktop-menu"
 
 describe("desktop menu", () => {

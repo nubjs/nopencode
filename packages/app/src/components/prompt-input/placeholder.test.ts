@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { promptPlaceholder } from "./placeholder"
 
 describe("promptPlaceholder", () => {

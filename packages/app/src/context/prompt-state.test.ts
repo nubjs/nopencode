@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import { createRoot } from "solid-js"
 import { createPromptState, DEFAULT_PROMPT } from "./prompt-state"
 

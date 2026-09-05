@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { MetaProvider, Title } from "@solidjs/meta"
 import { MemoryRouter, Route, createMemoryHistory, useParams } from "@solidjs/router"
 import { createMemo } from "solid-js"

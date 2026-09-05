@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import type { Prompt } from "@/context/prompt"
 import {
   canNavigateHistoryAtCursor,

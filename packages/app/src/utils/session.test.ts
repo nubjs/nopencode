@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import type { SessionApi, SessionInfo, SessionListInput } from "@opencode-ai/client/promise"
 import { listAllSessions, normalizeSessionInfo } from "./session"
 

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "@opencode-ai/nub-test"
 import type { OpenCodeEvent, SessionMessageInfo } from "@opencode-ai/client/promise"
 import { createV2SessionReducer } from "./server-session-v2-reducer"
 

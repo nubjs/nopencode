@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { scheduleConnectedMeasure } from "./measure"
 
 test("does not measure an element detached before the frame", async () => {

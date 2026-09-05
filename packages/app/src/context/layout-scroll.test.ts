@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "bun:test"
+import { describe, expect, test, vi } from "@opencode-ai/nub-test"
 import { createScrollPersistence } from "./layout-scroll"
 
 describe("createScrollPersistence", () => {

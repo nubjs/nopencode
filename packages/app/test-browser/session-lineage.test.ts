@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "@opencode-ai/nub-test"
 import { createRoot, createSignal } from "solid-js"
 import { createSessionLineage } from "@/pages/session/session-lineage"
 
