@@ -323,11 +323,12 @@ Read the Bun column as the target rather than as a pass mark: 38 of its own test
 
 Seventeen of the twenty-three rows match Bun exactly and one is ahead of it. The gap is concentrated in `opencode` and `core`:
 
-- **`core/test/session-runner.test.ts`** — the largest single cluster, and unexplained. It is not the `#sqlite` condition (`bun test --conditions=node` runs the file 83/83) and not `node:test` itself (a runner-free driver fails it under Bun too, where `bun test` passes it). Both of those were plausible and both are wrong; the cause is still open.
-- **`spyOn` on a module namespace.** `export * as TuiConfig from "./tui"` yields a namespace object whose properties are non-configurable by specification, so Node throws `Cannot redefine property` where Bun relaxes the rule for mocking. No shim can bridge that — only rewriting those tests onto `mock.module` would.
-- **A partial `mock.module` factory**, described above.
-- **`packages/enterprise`**, which fails on both runners.
+- **`opencode` is a long tail, not one cause.** The remaining failures are spread across the MCP, LSP, provider, subprocess and tool suites: a handful of CLI-subprocess runs that exit 1, three recorded-interaction replays that consume fewer interactions than they recorded, and singleton assertion mismatches. No single fix moves more than a few.
+- **`packages/enterprise`** fails on both runners — Bun 1/17, Node 0/17 — and had no `test` script at all before this branch.
+- **`core`'s residue** is eight tests in five files: a migration guard, a filesystem read, three `.npmrc` registry cases, one npm reify, and two file-lock tests that turn on process contention.
 - **`import-boundaries.test.ts`** in `packages/client` and `packages/sdk-next` spawns `[process.execPath, "build", …]`, which is `bun build` under Bun and `node build` here. Both packages fail the same number of tests on both runners, so the totals line up, but under Node those failures are the spawn rather than the boundary the test is about.
+- **A partial `mock.module` factory**, described above, accounts for one of `packages/app`'s two.
+- **`packages/tui`** is the one package ahead of Bun. Its three failures are `ERR_WORKER_INVALID_EXEC_ARGV`: `node --test` hands a child a long `execArgv`, and a `new Worker(…)` that inherits it is rejected. Bun's runner passes nothing comparable.
 
 Three flags every script carries:
 
@@ -352,14 +353,16 @@ What the shim has to bridge, beyond renaming `beforeAll` to `before`:
 - **`solid-js` resolving to its SSR build**, for the root package and for the `store` and `web` subpaths alike. Both runtimes resolve it identically; OpenTUI's Bun plugin swaps in the client build, and the shim redirects to it in `resolve` so app code and the renderer share one module instance.
 - **`mock.module` resolution.** `node:test` resolves a bare specifier against the immediate caller, which through the shim's wrapper is the shim itself — so mocking `@opentui/core` from a tui test failed naming a dependency of `packages/nub-test`. The shim resolves first and hands node an absolute URL. That has to go through `import.meta.resolve`, since the registered hooks apply to it and `createRequire` would return `solid-js`'s CJS entry and mock a second copy — a silent no-op rather than an error.
 - **Bun's own APIs** — the `Bun` global, `bun:sqlite`, the `$` shell, `with { type: "file" }` assets, and snapshots read from Bun's committed `.snap` files.
+- **`@opentui/solid/runtime-plugin-support/configure`**, whose `node` arm is a thrown error rather than an implementation, so importing it killed seven files outright. The resolver aliases it to a no-op that returns false — the same answer `script/build-nub.mjs` arranges for the compiled binary.
+- **`spyOn` on a module namespace.** `export * as Npm from "./npm"` yields an object that is non-extensible with non-configurable properties, so `defineProperty` fails where Bun relaxes the rule for mocking. `NUB_TEST_SPYABLE` names the modules whose re-export the load hook rewrites into a Proxy over an ordinary object: reads fall through to the namespace, writes shadow it. It is opt-in and named rather than universal because 389 modules here use that idiom and exactly two are ever spied on.
 
 A member that is present but unimplemented throws, because a silently missing API turns a real assertion into a passing no-op — the one failure mode a migration like this must not have. That covers what is in the shim, not everything Bun has: the polyfill is an ordinary object, so a member nobody added reads as `undefined`.
 
 One difference the shim does not bridge, and deliberately: a PARTIAL `mock.module` factory. Bun replaces the module and leaves a name the factory omitted as `undefined`; Node builds a synthetic module with exactly the factory's keys, so a third module that statically imports the omitted name fails to link. Filling the gaps would mean discovering the real module's export list synchronously, which `mock.module` has no way to do — and guessing it wrong would mock the wrong thing silently. One test file relies on the permissive reading.
 
-### The one dependency this added
+### The dependencies this added
 
-`expect@29.7.0`, Jest's, as a devDependency of the shim. Everything else it needs was already in the tree.
+`expect@29.7.0` and `pretty-format@29.7.0`, both Jest's, as dependencies of the shim. `pretty-format` is `expect`'s own transitive dependency at the same version, so naming it adds nothing to the install; it is what renders an object snapshot, and Bun writes Jest's snapshot format verbatim. Everything else the shim needs was already in the tree.
 
 It is there because of what the suite asserts with, counted across all test files: `toEqual` 3404 times, `toMatchObject` 678, and the asymmetric matchers `expect.objectContaining` 126, `expect.any` 37, `expect.stringContaining` 23, `expect.arrayContaining` 18, `expect.stringMatching` 8. A hand-written deep-equality engine that is subtly wrong does not fail — it passes, on both sides of a comparison it should have rejected, which is the failure mode this whole migration exists to avoid. `node:assert` has no asymmetric-matcher equivalent to build on.
 
