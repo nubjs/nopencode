@@ -30,9 +30,11 @@ async function collectFiles(root, current = root) {
 }
 
 export async function buildAppArchive(root, { skipBuild = false, channel = "dev" } = {}) {
-  // Theirs returns an empty archive rather than a stale one, and `load` reads a
-  // zero-length archive as "not embedded" — so skipping degrades to a TUI with
-  // no web UI instead of one serving whatever was last built.
+  // Theirs returns an empty archive rather than a stale one, so skipping serves
+  // no web UI instead of whatever was last built. Note this is NOT the same as
+  // shipping no archive: `compress({})` is 8 base64 characters, so `load`'s
+  // `length > 0` still holds and it decodes an empty asset map rather than
+  // failing or falling back to the source tree. That matches `--skip-web-ui`.
   if (skipBuild) return compress({})
   const app = path.join(root, "packages/app")
   execFileSync(path.join(app, "node_modules/.bin/vite"), ["build"], {

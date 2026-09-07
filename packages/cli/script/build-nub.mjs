@@ -84,8 +84,8 @@ mkdirSync(path.dirname(out), { recursive: true })
 
 // Their bundler plugin serves this specifier from memory; nub has no plugin
 // hook, so the archive is written to a real module and aliased onto it. Set
-// SKIP_WEB_UI=1 for an empty archive — `load` reads a zero-length one as "not
-// embedded" and the TUI starts without the web UI rather than failing on it.
+// SKIP_WEB_UI=1 to embed an empty asset map instead, which is what their
+// --skip-web-ui does.
 const appAssets = writeArchiveModule(
   path.join(cli, "dist-nub/app-assets.mjs"),
   await buildAppArchive(root, { skipBuild: process.env.SKIP_WEB_UI === "1" }),
