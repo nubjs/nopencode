@@ -18,14 +18,15 @@ Nothing in the build invokes bun. Where the workspace happens to have been insta
 | `simulationGraphPlugin` (a build-time assertion) | Not ported. It verifies a module-graph property of their build and has no bearing on the artifact. |
 | Bun's virtual filesystem (discovers file imports automatically) | Each asset named explicitly in `staged`. A bundler cannot see a specifier built at run time. |
 
-## Four defects, each hidden behind the previous
+## Five defects, the first four hidden behind each other
 
-The TUI started and never painted. Fixing one exposed the next, so they are worth recording in order.
+The TUI started and never painted. Fixing one exposed the next, so they are worth recording in order. The fifth is different in kind: it never stopped anything from painting, which is why it survived four rounds of getting the TUI working.
 
 1. **Cross-package assets reached through a computed specifier.** `` `@opencode-ai/ui/audio/${name}` `` and `tree-sitter-bash/tree-sitter-bash.wasm`. Nub auto-unbundles a package whose `.node` addon it can see, and got six on its own, but not these: the `require.resolve` lives in one package and the asset in another, so nothing static connects them. Each is named in `staged` and travels via `--include`.
 2. **The server subprocess exited 1, silently.** Same class — `tree-sitter-bash.wasm` again, this time in the server rather than the TUI. Only visible by running `serve --service` directly and reading its exit code.
 3. **`solid-js` resolved to its SSR build.** Its `exports` map sends the `node` condition to `./dist/server.js`, which has no reactive context: the TUI renders one frame, then throws `Theme context must be used within a context provider` inside an `Effect.tryPromise`. Two `--alias` entries rewrite it, matching their `resolveNodeSolidRuntimeImport`.
 4. **The Solid JSX transform never ran at all.** 136 files (134 tui, 2 cli). Solid's `generate: "universal"` output compiles to renderer ops rather than a `jsx()` factory, so no `jsxImportSource` or oxc setting substitutes for it.
+5. **`Bun` is not defined, on every TUI start.** Shipped code still calls `Bun.file` (4), `Bun.sleep` (3) and `Bun.write` (1). The one that fires every time is `MigrationOverlay`, whose `onMount` opens with `await Bun.sleep(1_000)` — the overlay mounts unconditionally, so its data-migration poll loop died on every run behind an unhandled rejection nobody sees, while the rest of the TUI painted normally. `src/nub/bun-shim.ts` fills the global in when it is absent, so a `bun build` of the same source is untouched.
 
 ## Running it
 
@@ -61,21 +62,25 @@ Built and run on **darwin-arm64**. Every check below is from a clean box — no 
 | | |
 | --- | --- |
 | `--version`, `models` | match the Bun build; `models` returns rc=0 with no rows on an unconfigured HOME, as theirs does |
-| TUI | paints, ~1443 ms to first frame with the service already up |
+| TUI | paints, ~500 ms to first frame with the service already up, measured through a pty that answers capability queries |
 | Web UI | served from the embedded archive: `/` returns the vite `index.html` and its hashed 511 KB entry chunk resolves |
 | Backend | `serve --service` starts, listens, bootstraps 46 migrations |
 | Binary | 55.7 MB with the web UI, 48.4 MB without |
 
 ### First paint, against the Bun build
 
-Alternating rounds, medians. The two binaries use different service ports — theirs `channel=beta` on 49374, this one `channel=local` on 49375 — so a fair cold run has to clear both between rounds. Clearing one leaves that arm's service warm and produces a ratio several times too large.
+**Measure this through a pty that answers the terminal's capability queries.** OpenTUI opens with the usual negotiation — OSC 10/11 colour queries, DA1, cursor-position report, DECRQM, XTGETTCAP, Kitty graphics and keyboard queries — and waits for the replies. A pty that answers nothing makes it wait out its own timeout, which adds roughly a second to both arms and compresses the ratio to about a third of its real size.
 
-| | this build | Bun build | |
+The two binaries also use different service ports — theirs `channel=beta` on 49374, this one `channel=local` on 49375 — so a fair cold run has to clear both between rounds. Clearing one leaves that arm's service warm and produces a ratio several times too large in the other direction.
+
+Twelve alternating rounds with both services warm, on a host under heavy build load. `min` and `p25` are the statistics to read: the medians here move by a factor of three with load, and inverted the ordering of two arms in one 7-round run and restored it in the next.
+
+| | min | p25 | median |
 | --- | --- | --- | --- |
-| cold service | 8682 ms | 6787 ms | 1.28x |
-| warm service | 1443 ms | 1171 ms | 1.23x |
+| this build | 504 ms | 548 ms | 612 ms |
+| Bun build | 156 ms | 202 ms | 223 ms |
 
-Cold is paid once per boot, warm on every invocation after. The gap is a roughly fixed cost, not a multiplier that grows with the work: the same overhead is ~4x on a bare `--version`, where the workload is nothing, and 1.23x here.
+Cold is paid once per boot, warm on every invocation after. The gap is a roughly fixed cost rather than a multiplier that grows with the work — the same overhead is far larger in relative terms on a bare `--version`, where the workload is nothing.
 
 ### Testing this app: one HOME, one run at a time
 

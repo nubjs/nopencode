@@ -1,5 +1,8 @@
 #!/usr/bin/env bun
 
+// First, so the global exists before anything can call it.
+import "./nub/bun-shim"
+
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Effect } from "effect"
 import { Commands } from "./commands/commands"
