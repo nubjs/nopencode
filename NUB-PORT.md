@@ -53,3 +53,32 @@ Every one of the 32 name combinations resolves against an installed workspace, c
 No top-level await anywhere in the compiled graph. Rolldown lowers each import edge into its own `await`, which is correct for a DAG and wrong inside a cycle — a cycle deadlocks with `Detected unsettled top-level await` and nothing else. `nub compile` now guards re-entrant async initializers itself, but the constraint on authored source stands.
 
 Bun has a related but distinct rule worth knowing, because it looks like the same constraint and is not: `bun build --bytecode` flips the default output format to CommonJS, and CommonJS cannot carry top-level await. Passing `--format=esm` explicitly keeps ESM *and* still applies bytecode. Their `build.ts` sets both, which is why their build compiles a graph full of top-level await while a naive `--bytecode` on the same source does not.
+
+## Status
+
+Built and run on **darwin-arm64**. Every check below is from a clean box — no other opencode process running, one stable HOME per binary, runs serialized.
+
+| | |
+| --- | --- |
+| `--version`, `models` | match the Bun build; `models` returns rc=0 with no rows on an unconfigured HOME, as theirs does |
+| TUI | paints, ~1443 ms to first frame with the service already up |
+| Web UI | served from the embedded archive: `/` returns the vite `index.html` and its hashed 511 KB entry chunk resolves |
+| Backend | `serve --service` starts, listens, bootstraps 46 migrations |
+| Binary | 55.7 MB with the web UI, 48.4 MB without |
+
+### First paint, against the Bun build
+
+Alternating rounds, medians. The two binaries use different service ports — theirs `channel=beta` on 49374, this one `channel=local` on 49375 — so a fair cold run has to clear both between rounds. Clearing one leaves that arm's service warm and produces a ratio several times too large.
+
+| | this build | Bun build | |
+| --- | --- | --- | --- |
+| cold service | 8682 ms | 6787 ms | 1.28x |
+| warm service | 1443 ms | 1171 ms | 1.23x |
+
+Cold is paid once per boot, warm on every invocation after. The gap is a roughly fixed cost, not a multiplier that grows with the work: the same overhead is ~4x on a bare `--version`, where the workload is nothing, and 1.23x here.
+
+### Testing this app: one HOME, one run at a time
+
+The managed service listens on a fixed port, while the registration file that finds it lives under `HOME`. A fresh `mktemp -d` HOME per run therefore does not isolate anything — each run finds no registration, starts its own service, and collides with the one a previous run left behind. Concurrent runs collide the same way.
+
+The failure is silent from the caller: it polls for 120 s and reports `Timed out waiting for the background service to start`. The real cause, `EADDRINUSE`, appears only in the service's own log under `HOME/.local/share/opencode/log`. Read that log before diagnosing anything about service startup.
