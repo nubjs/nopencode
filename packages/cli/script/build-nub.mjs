@@ -91,7 +91,18 @@ const appAssets = writeArchiveModule(
   await buildAppArchive(root, { skipBuild: process.env.SKIP_WEB_UI === "1" }),
 )
 
-run("node", [path.join(cli, "script/nub-solid-transform.mjs"), root, "packages/tui/src", "packages/cli/src"], root)
+// Restoring the whole source tree afterwards would discard any other edit in
+// it, so the transform reports exactly which files it wrote and only those come
+// back. It cost a real fix once — a source change made during a build was
+// reverted by the build's own cleanup, with nothing to say so.
+const transformed = execFileSync(
+  "node",
+  [path.join(cli, "script/nub-solid-transform.mjs"), root, "packages/tui/src", "packages/cli/src"],
+  { cwd: root, encoding: "utf8", stdio: ["inherit", "pipe", "inherit"] },
+)
+  .split("\n")
+  .filter(Boolean)
+
 try {
   run(
     nub,
@@ -132,7 +143,7 @@ try {
     cli,
   )
 } finally {
-  run("git", ["checkout", "--", "packages/tui/src", "packages/cli/src"], root)
+  if (transformed.length > 0) run("git", ["checkout", "--", ...transformed], root)
 }
 
 if (!existsSync(out)) throw new Error(`nub compile produced no binary at ${out}`)

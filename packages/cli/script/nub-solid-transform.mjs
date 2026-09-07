@@ -43,7 +43,7 @@ export async function transformTree(root, roots) {
   const module = path.join(path.dirname(entry), "solid-transform.js")
   const { transformSolidSource, resolveNodeSolidRuntimeImport } = await import(pathToFileURL(module).href)
 
-  let count = 0
+  const written = []
   for (const dir of roots) {
     for await (const file of walk(path.join(root, dir))) {
       const code = await readFile(file, "utf8")
@@ -54,14 +54,19 @@ export async function transformTree(root, roots) {
       })
       if (out && out !== code) {
         await writeFile(file, out)
-        count++
+        written.push(path.relative(root, file))
       }
     }
   }
-  return count
+  return written
 }
 
+// The written paths go to stdout, one per line, so the caller can restore
+// EXACTLY what was edited. Restoring the whole source tree instead would
+// silently discard any other change in it — which it did, to a real fix.
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [root, ...roots] = process.argv.slice(2)
-  console.log(`Solid-transformed ${await transformTree(root, roots)} files`)
+  const written = await transformTree(root, roots)
+  process.stderr.write(`Solid-transformed ${written.length} files\n`)
+  process.stdout.write(written.join("\n") + (written.length ? "\n" : ""))
 }
