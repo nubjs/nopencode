@@ -35,3 +35,6 @@ UPCOMING_CHANGELOG.md
 logs/
 *.bun-build
 tsconfig.tsbuildinfo
+
+# nub compile output: the binary and the generated web UI archive
+dist-nub/

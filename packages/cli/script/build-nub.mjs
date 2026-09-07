@@ -4,16 +4,24 @@
  * `script/build.ts` does this with `Bun.build` plus four bundler plugins. Nub
  * has no plugin hook, so the same work happens as explicit steps here: the
  * Solid transform runs ahead of the bundler, the assets Bun would discover
- * through its virtual filesystem are staged and embedded with `--include`, and
- * the Solid runtime is aliased past its `node` export condition.
+ * through its virtual filesystem are staged and embedded with `--include`, the
+ * web UI archive is written to a real module and aliased onto the specifier
+ * their plugin served, and the Solid runtime is aliased past its `node` export
+ * condition.
+ *
+ * Everything here runs on stock Node, including the vite build behind the web
+ * UI archive. Bun is not invoked at any point; where the workspace happens to
+ * have been installed by it, only the resulting directory layout is read.
  *
  * The transform edits `.tsx` in place, so the tree is always restored before
  * this exits. Transformed files must never be committed.
  */
 import { execFileSync } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, readdirSync, realpathSync, rmSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import { buildAppArchive, writeArchiveModule } from "./nub-app-archive.mjs"
+import { NATIVE, nativePackage } from "./nub-native-packages.mjs"
 
 const cli = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const root = path.resolve(cli, "../..")
@@ -21,15 +29,26 @@ const nub = process.env.NUB_BIN ?? "nub"
 const out = process.env.OUT ?? path.join(cli, "dist-nub", "opencode")
 
 const run = (file, args, cwd) => execFileSync(file, args, { cwd, stdio: "inherit" })
-const bunStore = (name) => {
-  // The workspace installs through bun, which keeps one real copy per version
-  // under `.bun` and links to it. `--include` embeds a path byte for byte and
-  // does not follow a link out of the tree, so the real copy is staged in.
-  const base = path.join(root, "node_modules", ".bun")
-  const dirs = execFileSync("ls", [base], { encoding: "utf8" }).split("\n")
-  const hit = dirs.find((dir) => dir.startsWith(`${name.replace("/", "+")}@`))
-  if (hit === undefined) throw new Error(`not installed: ${name}`)
-  return path.join(base, hit, "node_modules", name)
+
+/**
+ * The REAL directory a dependency's files live in, never a link to it.
+ *
+ * `--include` embeds a path byte for byte and does not follow a link out of the
+ * tree, so a staged copy has to start from the real one. Where that is depends
+ * on who installed: bun keeps one copy per version under `node_modules/.bun`
+ * and links to it, while a plain hoisted layout puts the files at
+ * `node_modules/<name>` directly. Trying the store first and falling back means
+ * the build does not require bun to have done the install.
+ */
+const realPackageDir = (name) => {
+  const store = path.join(root, "node_modules", ".bun")
+  if (existsSync(store)) {
+    const hit = readdirSync(store).find((dir) => dir.startsWith(`${name.replace("/", "+")}@`))
+    if (hit !== undefined) return path.join(store, hit, "node_modules", name)
+  }
+  const hoisted = path.join(root, "node_modules", name)
+  if (existsSync(hoisted)) return realpathSync(hoisted)
+  throw new Error(`not installed: ${name}`)
 }
 
 /**
@@ -40,12 +59,12 @@ const bunStore = (name) => {
  */
 const staged = [
   ["@opencode-ai/ui", path.join(root, "packages/ui"), ["package.json", "src/assets/audio"]],
-  ["tree-sitter-bash", bunStore("tree-sitter-bash")],
-  ["tree-sitter-powershell", bunStore("tree-sitter-powershell")],
-  ["@parcel/watcher-darwin-arm64", bunStore("@parcel/watcher-darwin-arm64")],
-  ["@lydell/node-pty-darwin-arm64", bunStore("@lydell/node-pty-darwin-arm64")],
-  ["@ff-labs/fff-bin-darwin-arm64", bunStore("@ff-labs/fff-bin-darwin-arm64")],
-  ["@yuuang/ffi-rs-darwin-arm64", bunStore("@yuuang/ffi-rs-darwin-arm64")],
+  ["tree-sitter-bash", realPackageDir("tree-sitter-bash")],
+  ["tree-sitter-powershell", realPackageDir("tree-sitter-powershell")],
+  ...Object.keys(NATIVE).map((name) => {
+    const resolved = nativePackage(name)
+    return [resolved, realPackageDir(resolved)]
+  }),
 ]
 
 for (const [name, source, subset] of staged) {
@@ -60,8 +79,17 @@ for (const [name, source, subset] of staged) {
     }
 }
 
-const solid = bunStore("solid-js")
+const solid = realPackageDir("solid-js")
 mkdirSync(path.dirname(out), { recursive: true })
+
+// Their bundler plugin serves this specifier from memory; nub has no plugin
+// hook, so the archive is written to a real module and aliased onto it. Set
+// SKIP_WEB_UI=1 for an empty archive — `load` reads a zero-length one as "not
+// embedded" and the TUI starts without the web UI rather than failing on it.
+const appAssets = writeArchiveModule(
+  path.join(cli, "dist-nub/app-assets.mjs"),
+  await buildAppArchive(root, { skipBuild: process.env.SKIP_WEB_UI === "1" }),
+)
 
 run("node", [path.join(cli, "script/nub-solid-transform.mjs"), root, "packages/tui/src", "packages/cli/src"], root)
 try {
@@ -74,11 +102,8 @@ try {
       out,
       "--target",
       "26.6.0",
-      // Only their vite build can produce the embedded web UI. `load` treats a
-      // zero-length archive as "not embedded" and falls through, so the TUI
-      // starts without it rather than failing on it.
       "--alias",
-      `virtual:opencode-app-assets=${path.join(cli, "src/nub/app-assets-empty.ts")}`,
+      `virtual:opencode-app-assets=${appAssets}`,
       // Solid's `node` export condition points at its SERVER build, which has no
       // reactive context — the TUI renders its first frame and then throws
       // "Theme context must be used within a context provider". Their bun plugin
