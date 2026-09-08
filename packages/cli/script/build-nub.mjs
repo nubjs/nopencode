@@ -141,13 +141,25 @@ try {
       "node_modules/tree-sitter-*/src/**",
       "--exclude",
       "node_modules/tree-sitter-*/prebuilds/**",
-      // Matches the execArgv their bun build bakes in (script/build.ts): the
-      // --user-agent flag there is bun's own and has no Node equivalent, so
-      // --no-warnings is the whole difference. It also subsumes the narrower
-      // --disable-warning=ExperimentalWarning this used to pass, which existed
-      // for the --experimental-* flags the artifact needs.
+      // Mirrors the execArgv their bun build bakes in (script/build.ts) with one
+      // deliberate omission. --no-warnings is kept, and subsumes the narrower
+      // --disable-warning=ExperimentalWarning this used to pass for the
+      // --experimental-* flags the artifact needs; --user-agent is bun's own
+      // flag with no Node equivalent.
+      //
+      // --use-system-ca is NOT passed. Node's macOS reader
+      // (src/crypto/crypto_context.cc, ReadMacOSKeychainCertificates) pulls every
+      // certificate in every keychain via SecItemCopyMatching(kSecMatchLimitAll)
+      // and then runs a full SecTrustEvaluateWithError per certificate — one
+      // trustd XPC round trip each. Measured on node v26.7.0, that costs this
+      // binary 2235 ms on `--version` alone (657 ms -> 2892 ms, min of 7), and it
+      // is charged again per secure context rather than cached. The cost is lazy,
+      // so it lands on the first TLS use rather than at startup, which is why it
+      // hid behind a fast `--version` until the whole graph was measured.
+      // Users who need enterprise CAs keep the feature: NODE_USE_SYSTEM_CA=1
+      // turns it back on per run.
       "--node-options",
-      "--use-system-ca --no-warnings",
+      "--no-warnings",
       "--external",
       "node-gyp",
       "--allow-dynamic-import",

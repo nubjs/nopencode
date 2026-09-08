@@ -82,6 +82,23 @@ Twelve alternating rounds with both services warm, on a host under heavy build l
 
 Cold is paid once per boot, warm on every invocation after. The gap is a roughly fixed cost rather than a multiplier that grows with the work — the same overhead is far larger in relative terms on a bare `--version`, where the workload is nothing.
 
+### One flag from their `execArgv` is not carried: `--use-system-ca`
+
+Their build bakes `--user-agent`, `--use-system-ca` and `--no-warnings` into `execArgv` (`script/build.ts`). This build carries `--no-warnings` and drops `--use-system-ca`, because on Node the flag is not close to free.
+
+Node's macOS reader (`src/crypto/crypto_context.cc`, `ReadMacOSKeychainCertificates`) asks for every certificate in every keychain — `SecItemCopyMatching` with `kSecMatchLimitAll` over `kSecClassCertificate`, not just the roots — and then calls `IsCertificateTrustValid` on each one, which builds an SSL policy and runs a full `SecTrustEvaluateWithError`. That is one `trustd` XPC round trip per certificate, and trust evaluation may attempt AIA/OCSP/CRL fetches, so part of the cost is network. The same mechanism has been reported elsewhere at 8.5–9.8 s on corporate-managed Macs ([anthropics/claude-code#53660](https://github.com/anthropics/claude-code/issues/53660)).
+
+Measured here on node v26.7.0, one binary, `--version`, min of 7:
+
+| | min |
+| --- | --- |
+| without `--use-system-ca` | 657 ms |
+| with `--use-system-ca` | 2892 ms |
+
+The cost is lazy — a hello-world with the flag is 39 ms against 39 ms without — so it lands on the first read of the trust store rather than at startup. That is why it stayed hidden until the whole graph was measured. It also appears to be charged per secure context rather than cached once.
+
+The capability is not lost. `NODE_USE_SYSTEM_CA=1` turns it back on for a single run, which is what anyone behind an enterprise CA needs.
+
 ### Testing this app: one HOME, one run at a time
 
 The managed service listens on a fixed port, while the registration file that finds it lives under `HOME`. A fresh `mktemp -d` HOME per run therefore does not isolate anything — each run finds no registration, starts its own service, and collides with the one a previous run left behind. Concurrent runs collide the same way.
