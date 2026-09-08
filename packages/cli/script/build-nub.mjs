@@ -123,6 +123,13 @@ try {
       `solid-js=${path.join(solid, "dist/solid.js")}`,
       "--alias",
       `solid-js/store=${path.join(solid, "store/dist/store.js")}`,
+      // @opentui/core is redundant here and kept deliberately: compile's own
+      // detection already ships it unbundled because it declares 8 per-platform
+      // binary packages, so a build without this line produces the same 316
+      // chunks, the same staged layout and the same timings. It stays as the
+      // belt-and-braces for a future version that drops the napi-rs layout and
+      // would otherwise be bundled silently. web-tree-sitter is NOT redundant —
+      // nothing detects it, and the build reports it as "you asked for it".
       "--unbundled",
       "@opentui/core",
       "--unbundled",
