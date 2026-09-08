@@ -82,6 +82,15 @@ Twelve alternating rounds with both services warm, on a host under heavy build l
 
 Cold is paid once per boot, warm on every invocation after. The gap is a roughly fixed cost rather than a multiplier that grows with the work — the same overhead is far larger in relative terms on a bare `--version`, where the workload is nothing.
 
+**Re-measured 2026-09-08, and the ratio is much smaller. Both arms moved, in opposite directions, so the run above is not reproducible and the cause of the discrepancy is not established.** Twelve alternating rounds per pairing, same harness, both services warm:
+
+| | ours | Bun build | ratio |
+| --- | --- | --- | --- |
+| before dropping `--use-system-ca` | 330 ms | 227 ms | 1.45x |
+| after dropping it | 313 ms | 214 ms | 1.46x |
+
+Two things follow. The ratio on this path is about **1.45x**, not the 3.2x the earlier run reported. And **the flag is not on this path at all** — the ratio is unchanged across the fix, because first paint happens before anything reads the trust store. Dropping it is worth 8.5x on `--version` and nothing here.
+
 ### One flag from their `execArgv` is not carried: `--use-system-ca`
 
 Their build bakes `--user-agent`, `--use-system-ca` and `--no-warnings` into `execArgv` (`script/build.ts`). This build carries `--no-warnings` and drops `--use-system-ca`, because on Node the flag is not close to free.
