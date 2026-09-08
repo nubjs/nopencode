@@ -141,8 +141,13 @@ try {
       "node_modules/tree-sitter-*/src/**",
       "--exclude",
       "node_modules/tree-sitter-*/prebuilds/**",
+      // Matches the execArgv their bun build bakes in (script/build.ts): the
+      // --user-agent flag there is bun's own and has no Node equivalent, so
+      // --no-warnings is the whole difference. It also subsumes the narrower
+      // --disable-warning=ExperimentalWarning this used to pass, which existed
+      // for the --experimental-* flags the artifact needs.
       "--node-options",
-      "--use-system-ca --disable-warning=ExperimentalWarning",
+      "--use-system-ca --no-warnings",
       "--external",
       "node-gyp",
       "--allow-dynamic-import",
